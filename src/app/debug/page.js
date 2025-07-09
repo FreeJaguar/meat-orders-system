@@ -6,7 +6,7 @@ export default function DebugPage() {
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-bold mb-4">🔍 בדיקת הגדרות</h1>
+      <h1 className="text-2xl font-bold mb-4">🔍 בדיקת הההגדרות</h1>
       
       <div className="space-y-4">
         <div className="p-4 border rounded">
