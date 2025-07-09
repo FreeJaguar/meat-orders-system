@@ -8,6 +8,10 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
+// הוסף את השורות האלה לבדיקה:
+console.log('🔍 SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+console.log('🔍 SUPABASE_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'KEY EXISTS' : 'KEY MISSING');
+
 export default function HomePage() {
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
