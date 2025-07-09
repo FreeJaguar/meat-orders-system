@@ -8,7 +8,7 @@ export const metadata = {
   description: "מערכת הזמנות דיגיטלית לסוכן שטח",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }) {
   return (
     <html lang="he" dir="rtl">
       <body className={inter.className}>
