@@ -8,10 +8,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-// הוסף את השורות האלה לבדיקה:
-console.log('🔍 SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-console.log('🔍 SUPABASE_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'KEY EXISTS' : 'KEY MISSING');
-
 export default function HomePage() {
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -391,6 +387,14 @@ export default function HomePage() {
             >
               📋 הזמנות קיימות
             </button>
+            
+            <button
+              onClick={() => window.open('/warehouse', '_blank')}
+              className="bg-purple-500 text-white px-6 py-2 rounded-lg hover:bg-purple-600 transition-colors"
+            >
+              🏭 דשבורד מחסן
+            </button>
+            
             {editingOrder && (
               <button
                 onClick={cancelEdit}

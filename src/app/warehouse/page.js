@@ -508,6 +508,15 @@ export default function WarehouseDashboard() {
             📋 דשבורד מחסן
           </h1>
           <p className="text-gray-600">ניהול הזמנות והתראות בזמן אמת</p>
+          
+          <div className="mt-4">
+            <button
+              onClick={() => window.open('/', '_blank')}
+              className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-colors"
+            >
+              🏪 חזרה לטופס הזמנות
+            </button>
+          </div>
         </div>
 
         {/* כפתורי ייצוא */}
