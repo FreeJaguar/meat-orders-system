@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Package, Eye, Edit, Plus, Minus } from 'lucide-react';
+import { Package, Eye, Edit, Plus, Minus, Download, Printer } from 'lucide-react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -21,11 +21,10 @@ export default function WarehouseDashboard() {
   const [allProducts, setAllProducts] = useState([]);
 
   useEffect(() => {
-  loadOrders();
-  loadProducts();
-  const cleanup = setupRealtimeSubscription();
-  return cleanup;
-}, []); // eslint-disable-line react-hooks/exhaustive-deps
+    loadOrders();
+    loadProducts();
+    setupRealtimeSubscription();
+  }, []);
 
   const loadOrders = async () => {
     setLoading(true);
@@ -69,17 +68,26 @@ export default function WarehouseDashboard() {
 
   const setupRealtimeSubscription = () => {
     const channel = supabase
-      .channel('orders-channel')
+      .channel('orders-changes')
       .on('postgres_changes', { 
-        event: 'INSERT', 
+        event: '*', 
         schema: 'public', 
         table: 'orders' 
       }, (payload) => {
-        console.log('New order received:', payload.new);
-        showNotification(`הזמנה חדשה התקבלה! מספר: ${payload.new.order_number}`);
+        console.log('Order change received:', payload);
+        
+        if (payload.eventType === 'INSERT') {
+          showNotification(`🔔 הזמנה חדשה התקבלה! מספר: ${payload.new.order_number}`);
+          playNotificationSound();
+        } else if (payload.eventType === 'UPDATE') {
+          showNotification(`📝 הזמנה ${payload.new.order_number} עודכנה`);
+        }
+        
         loadOrders();
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -87,6 +95,24 @@ export default function WarehouseDashboard() {
   };
 
   const showNotification = (message) => {
+    // התראה של הדפדפן
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('מערכת הזמנות מחסן', {
+        body: message,
+        icon: '🥩'
+      });
+    } else if ('Notification' in window && Notification.permission !== 'denied') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          new Notification('מערכת הזמנות מחסן', {
+            body: message,
+            icon: '🥩'
+          });
+        }
+      });
+    }
+    
+    // התראה ויזואלית באפליקציה
     const notification = document.createElement('div');
     notification.className = 'fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50 animate-bounce';
     notification.innerHTML = `
@@ -102,6 +128,27 @@ export default function WarehouseDashboard() {
         document.body.removeChild(notification);
       }
     }, 5000);
+  };
+
+  const playNotificationSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (error) {
+      console.log('Sound not supported');
+    }
   };
 
   const updateOrderStatus = async (orderId, newStatus) => {
@@ -123,13 +170,207 @@ export default function WarehouseDashboard() {
     }
   };
 
-  // פונקציות עריכה
+  // פונקציות הדפסה וייצוא
+  const printOrder = (order) => {
+    const printWindow = window.open('', '_blank');
+    const printContent = generatePrintHTML(order);
+    
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+  };
+
+  const generatePrintHTML = (order) => {
+    // קיבוץ מוצרים לפי קטגוריה
+    const itemsByCategory = order.order_items.reduce((acc, item) => {
+      const category = item.products?.category || 'אחר';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(item);
+      return acc;
+    }, {});
+
+    const categoriesHTML = Object.entries(itemsByCategory).map(([category, items]) => `
+      <div class="category-section">
+        <h3 style="background: #f3f4f6; padding: 8px; margin: 10px 0 5px 0; font-weight: bold; border-right: 4px solid #3b82f6;">${category}</h3>
+        ${items.map(item => {
+          const noteParts = item.notes ? item.notes.split(' | ') : ['', ''];
+          const weight = noteParts[0]?.replace('משקל: ', '') || '';
+          const notes = noteParts[1] || '';
+          
+          return `
+            <div style="padding: 8px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between;">
+              <div>
+                <strong>${item.products?.name || 'מוצר לא זמין'}</strong>
+                ${weight ? `<br><small>משקל: ${weight}</small>` : ''}
+                ${notes ? `<br><small>הערות: ${notes}</small>` : ''}
+              </div>
+              <div style="text-align: left; font-weight: bold; font-size: 1.2em;">
+                ${item.quantity} ${item.products?.unit || 'יח׳'}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `).join('');
+
+    return `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="he">
+      <head>
+        <meta charset="UTF-8">
+        <title>הזמנה ${order.order_number}</title>
+        <style>
+          body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            line-height: 1.4;
+            font-size: 14px;
+          }
+          .header { 
+            border-bottom: 3px solid #333; 
+            padding-bottom: 15px; 
+            margin-bottom: 20px; 
+            text-align: center;
+          }
+          .info-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 20px; 
+            margin-bottom: 20px; 
+          }
+          .info-box { 
+            border: 1px solid #ddd; 
+            padding: 10px; 
+            border-radius: 5px; 
+          }
+          .category-section { 
+            margin-bottom: 15px; 
+            page-break-inside: avoid;
+          }
+          .items-container {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+          }
+          @media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+            .category-section { 
+              page-break-inside: avoid; 
+              margin-bottom: 20px;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>🥩 הזמנה מספר ${order.order_number}</h1>
+          <p style="color: #666;">תאריך הדפסה: ${new Date().toLocaleDateString('he-IL')}</p>
+        </div>
+        
+        <div class="info-grid">
+          <div class="info-box">
+            <h3>פרטי לקוח</h3>
+            <p><strong>שם:</strong> ${order.customers?.name || 'לא צוין'}</p>
+            <p><strong>קוד:</strong> ${order.customers?.code || 'אין'}</p>
+            <p><strong>טלפון:</strong> ${order.customers?.phone || 'לא צוין'}</p>
+            <p><strong>כתובת:</strong> ${order.customers?.address || 'לא צוינה'}</p>
+          </div>
+          
+          <div class="info-box">
+            <h3>פרטי הזמנה</h3>
+            <p><strong>תאריך אספקה:</strong> ${new Date(order.delivery_date).toLocaleDateString('he-IL')}</p>
+            <p><strong>סטטוס:</strong> ${order.status}</p>
+            <p><strong>סה"כ פריטים:</strong> ${order.order_items?.length || 0}</p>
+            <p><strong>נוצרה:</strong> ${new Date(order.created_at).toLocaleDateString('he-IL')}</p>
+          </div>
+        </div>
+
+        ${order.notes ? `
+          <div class="info-box" style="margin-bottom: 20px;">
+            <h3>הערות כלליות</h3>
+            <p>${order.notes}</p>
+          </div>
+        ` : ''}
+        
+        <div class="items-container">
+          <h2 style="background: #333; color: white; padding: 10px; margin: 0;">פריטי ההזמנה</h2>
+          ${categoriesHTML}
+        </div>
+        
+        <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #666;">
+          <p>הודפס ממערכת הזמנות דיגיטלית | ${new Date().toLocaleString('he-IL')}</p>
+        </div>
+      </body>
+      </html>
+    `;
+  };
+
+  const exportToExcel = () => {
+    const csvContent = generateCSVContent();
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `הזמנות_${new Date().toLocaleDateString('he-IL').replace(/\//g, '-')}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const generateCSVContent = () => {
+    const headers = ['מספר הזמנה', 'לקוח', 'קוד לקוח', 'תאריך אספקה', 'סטטוס', 'מוצר', 'קטגוריה', 'כמות', 'הערות פריט', 'הערות הזמנה', 'תאריך יצירה'];
+    
+    const rows = [];
+    filteredOrders.forEach(order => {
+      if (order.order_items && order.order_items.length > 0) {
+        order.order_items.forEach(item => {
+          const row = [
+            order.order_number,
+            order.customers?.name || '',
+            order.customers?.code || '',
+            new Date(order.delivery_date).toLocaleDateString('he-IL'),
+            order.status,
+            item.products?.name || '',
+            item.products?.category || '',
+            item.quantity,
+            item.notes || '',
+            order.notes || '',
+            new Date(order.created_at).toLocaleDateString('he-IL')
+          ];
+          rows.push(row.map(field => `"${field}"`).join(','));
+        });
+      } else {
+        const row = [
+          order.order_number,
+          order.customers?.name || '',
+          order.customers?.code || '',
+          new Date(order.delivery_date).toLocaleDateString('he-IL'),
+          order.status,
+          '', '', '', '',
+          order.notes || '',
+          new Date(order.created_at).toLocaleDateString('he-IL')
+        ];
+        rows.push(row.map(field => `"${field}"`).join(','));
+      }
+    });
+    
+    return '\uFEFF' + [headers.join(','), ...rows].join('\n');
+  };
+
+  // פונקציות עריכה (כפי שהיו)
   const startEditOrder = (order) => {
     setEditingOrder(order);
     setEditDeliveryDate(order.delivery_date);
     setEditNotes(order.notes || '');
     
-    // טעינת פריטי ההזמנה לעריכה
     const items = order.order_items.map(item => {
       const noteParts = item.notes ? item.notes.split(' | ') : ['', ''];
       const weight = noteParts[0]?.replace('משקל: ', '') || '';
@@ -190,7 +431,6 @@ export default function WarehouseDashboard() {
     if (!editingOrder) return;
     
     try {
-      // עדכון פרטי ההזמנה
       const { error: orderError } = await supabase
         .from('orders')
         .update({
@@ -202,7 +442,6 @@ export default function WarehouseDashboard() {
 
       if (orderError) throw orderError;
 
-      // מחיקת פריטי ההזמנה הישנים
       const { error: deleteError } = await supabase
         .from('order_items')
         .delete()
@@ -210,7 +449,6 @@ export default function WarehouseDashboard() {
 
       if (deleteError) throw deleteError;
 
-      // הוספת פריטי ההזמנה החדשים
       const orderItemsData = editOrderItems.map(item => ({
         order_id: editingOrder.id,
         product_id: item.product_id,
@@ -224,7 +462,6 @@ export default function WarehouseDashboard() {
 
       if (itemsError) throw itemsError;
 
-      // איפוס מצב עריכה וטעינה מחדש
       setEditingOrder(null);
       setEditOrderItems([]);
       setEditNotes('');
@@ -271,6 +508,20 @@ export default function WarehouseDashboard() {
             📋 דשבורד מחסן
           </h1>
           <p className="text-gray-600">ניהול הזמנות והתראות בזמן אמת</p>
+        </div>
+
+        {/* כפתורי ייצוא */}
+        <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+          <div className="flex justify-between items-center">
+            <h3 className="font-bold text-gray-800">פעולות כלליות</h3>
+            <button
+              onClick={exportToExcel}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
+            >
+              <Download size={16} className="ml-1" />
+              ייצא לאקסל
+            </button>
+          </div>
         </div>
 
         {/* סינון */}
@@ -348,13 +599,21 @@ export default function WarehouseDashboard() {
                       </div>
                     </div>
                     
-                    <div className="flex space-x-2 space-x-reverse">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => printOrder(order)}
+                        className="bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center"
+                      >
+                        <Printer size={16} className="ml-1" />
+                        הדפס
+                      </button>
+
                       <button
                         onClick={() => {
                           setSelectedOrder(order);
                           setShowOrderDetails(true);
                         }}
-                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center"
+                        className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center"
                       >
                         <Eye size={16} className="ml-1" />
                         צפה
@@ -362,7 +621,7 @@ export default function WarehouseDashboard() {
                       
                       <button
                         onClick={() => startEditOrder(order)}
-                        className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors flex items-center"
+                        className="bg-orange-500 text-white px-3 py-2 rounded-lg hover:bg-orange-600 transition-colors flex items-center"
                       >
                         <Edit size={16} className="ml-1" />
                         ערוך
@@ -371,7 +630,7 @@ export default function WarehouseDashboard() {
                       {order.status === 'חדשה' && (
                         <button
                           onClick={() => updateOrderStatus(order.id, 'בטיפול')}
-                          className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors"
+                          className="bg-yellow-500 text-white px-3 py-2 rounded-lg hover:bg-yellow-600 transition-colors"
                         >
                           🔄 התחל טיפול
                         </button>
@@ -380,7 +639,7 @@ export default function WarehouseDashboard() {
                       {order.status === 'בטיפול' && (
                         <button
                           onClick={() => updateOrderStatus(order.id, 'נשלחה')}
-                          className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors"
+                          className="bg-purple-500 text-white px-3 py-2 rounded-lg hover:bg-purple-600 transition-colors"
                         >
                           🚚 סמן כנשלחה
                         </button>
@@ -389,7 +648,7 @@ export default function WarehouseDashboard() {
                       {order.status === 'נשלחה' && (
                         <button
                           onClick={() => updateOrderStatus(order.id, 'הושלמה')}
-                          className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
+                          className="bg-green-500 text-white px-3 py-2 rounded-lg hover:bg-green-600 transition-colors"
                         >
                           ✅ סמן כהושלמה
                         </button>
@@ -411,12 +670,21 @@ export default function WarehouseDashboard() {
                   <h2 className="text-2xl font-bold text-gray-800">
                     פרטי הזמנה #{selectedOrder.order_number}
                   </h2>
-                  <button
-                    onClick={() => setShowOrderDetails(false)}
-                    className="text-gray-500 hover:text-gray-700 text-2xl"
-                  >
-                    ×
-                  </button>
+                  <div className="flex space-x-2 space-x-reverse">
+                    <button
+                      onClick={() => printOrder(selectedOrder)}
+                      className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center"
+                    >
+                      <Printer size={16} className="ml-1" />
+                      הדפס
+                    </button>
+                    <button
+                      onClick={() => setShowOrderDetails(false)}
+                      className="text-gray-500 hover:text-gray-700 text-2xl"
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
               </div>
               
@@ -428,6 +696,7 @@ export default function WarehouseDashboard() {
                       <p><strong>שם:</strong> {selectedOrder.customers?.name || 'לא צוין'}</p>
                       <p><strong>קוד:</strong> {selectedOrder.customers?.code || 'אין'}</p>
                       <p><strong>טלפון:</strong> {selectedOrder.customers?.phone || 'לא צוין'}</p>
+                      <p><strong>כתובת:</strong> {selectedOrder.customers?.address || 'לא צוינה'}</p>
                     </div>
                   </div>
                   
@@ -436,21 +705,53 @@ export default function WarehouseDashboard() {
                     <div className="space-y-2 text-sm">
                       <p><strong>תאריך אספקה:</strong> {new Date(selectedOrder.delivery_date).toLocaleDateString('he-IL')}</p>
                       <p><strong>סטטוס:</strong> <span className={`px-2 py-1 rounded text-xs ${getStatusColor(selectedOrder.status)}`}>{selectedOrder.status}</span></p>
+                      <p><strong>נוצרה:</strong> {new Date(selectedOrder.created_at).toLocaleDateString('he-IL')}</p>
+                      <p><strong>עודכנה:</strong> {new Date(selectedOrder.updated_at).toLocaleDateString('he-IL')}</p>
                     </div>
                   </div>
                 </div>
                 
                 <div className="mb-6">
-                  <h3 className="font-bold text-gray-800 mb-3">פריטי הזמנה</h3>
-                  <div className="space-y-3">
-                    {selectedOrder.order_items?.map((item, index) => (
-                      <div key={index} className="bg-gray-50 p-4 rounded-lg">
-                        <p className="font-medium">{item.products?.name || 'מוצר לא זמין'}</p>
-                        <p className="text-sm text-gray-600">כמות: {item.quantity}</p>
-                        {item.notes && <p className="text-sm text-gray-600">הערות: {item.notes}</p>}
+                  <h3 className="font-bold text-gray-800 mb-3">פריטי הזמנה (מקובצים לפי קטגוריה)</h3>
+                  {(() => {
+                    // קיבוץ פריטים לפי קטגוריה
+                    const itemsByCategory = selectedOrder.order_items?.reduce((acc, item) => {
+                      const category = item.products?.category || 'אחר';
+                      if (!acc[category]) {
+                        acc[category] = [];
+                      }
+                      acc[category].push(item);
+                      return acc;
+                    }, {}) || {};
+
+                    return Object.entries(itemsByCategory).map(([category, items]) => (
+                      <div key={category} className="mb-4 border rounded-lg overflow-hidden">
+                        <div className="bg-blue-50 px-4 py-2 border-b">
+                          <h4 className="font-bold text-blue-800">{category}</h4>
+                        </div>
+                        <div className="divide-y">
+                          {items.map((item, index) => {
+                            const noteParts = item.notes ? item.notes.split(' | ') : ['', ''];
+                            const weight = noteParts[0]?.replace('משקל: ', '') || '';
+                            const notes = noteParts[1] || '';
+                            
+                            return (
+                              <div key={index} className="p-3 flex justify-between items-center">
+                                <div className="flex-1">
+                                  <p className="font-medium">{item.products?.name || 'מוצר לא זמין'}</p>
+                                  {weight && <p className="text-sm text-gray-600">משקל: {weight}</p>}
+                                  {notes && <p className="text-sm text-gray-600">הערות: {notes}</p>}
+                                </div>
+                                <div className="text-left font-bold text-lg">
+                                  {item.quantity} {item.products?.unit || 'יח׳'}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    ));
+                  })()}
                 </div>
                 
                 {selectedOrder.notes && (
@@ -459,6 +760,44 @@ export default function WarehouseDashboard() {
                     <p className="bg-gray-50 p-4 rounded-lg">{selectedOrder.notes}</p>
                   </div>
                 )}
+                
+                <div className="flex space-x-4 space-x-reverse">
+                  {selectedOrder.status === 'חדשה' && (
+                    <button
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'בטיפול')}
+                      className="bg-yellow-500 text-white px-6 py-3 rounded-lg hover:bg-yellow-600 transition-colors"
+                    >
+                      🔄 התחל טיפול
+                    </button>
+                  )}
+                  
+                  {selectedOrder.status === 'בטיפול' && (
+                    <button
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'נשלחה')}
+                      className="bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600 transition-colors"
+                    >
+                      🚚 סמן כנשלחה
+                    </button>
+                  )}
+                  
+                  {selectedOrder.status === 'נשלחה' && (
+                    <button
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'הושלמה')}
+                      className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors"
+                    >
+                      ✅ סמן כהושלמה
+                    </button>
+                  )}
+                  
+                  {selectedOrder.status !== 'בוטלה' && selectedOrder.status !== 'הושלמה' && (
+                    <button
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'בוטלה')}
+                      className="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors"
+                    >
+                      ❌ בטל הזמנה
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
