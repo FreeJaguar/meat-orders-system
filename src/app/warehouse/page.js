@@ -143,7 +143,7 @@ export default function WarehouseDashboard() {
       
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + 0.5);
-    } catch (err) {
+    } catch {
       console.log('Sound not supported');
     }
   };
