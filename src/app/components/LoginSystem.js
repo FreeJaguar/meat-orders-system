@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { Lock, Shield, Users, Eye, EyeOff } from 'lucide-react';
+import { Package, Shield, Lock, Users, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginSystem({ children, requiredRole = null }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
