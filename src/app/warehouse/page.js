@@ -2,6 +2,16 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { Package, Eye, Edit, Plus, Minus, Download, Printer } from 'lucide-react';
+import LoginSystem from '../../components/LoginSystem';
+import WarehouseDashboard from './WarehouseDashboard'; // העבר את הקוד לקומפוננטה נפרדת
+
+export default function Page() {
+  return (
+    <LoginSystem requiredRole="warehouse">
+      <WarehouseDashboard />
+    </LoginSystem>
+  );
+}
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -14,18 +24,11 @@ export default function WarehouseDashboard() {
   const [filter, setFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
-  const [editingOrder, setEditingOrder] = useState(null);
-  const [editOrderItems, setEditOrderItems] = useState([]);
-  const [editNotes, setEditNotes] = useState('');
-  const [editDeliveryDate, setEditDeliveryDate] = useState('');
-  const [allProducts, setAllProducts] = useState([]);
 
   useEffect(() => {
     loadOrders();
-    loadProducts();
-    const cleanup = setupRealtimeSubscription();
-    return cleanup;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    setupRealtimeSubscription();
+  }, []);
 
   const loadOrders = async () => {
     setLoading(true);
@@ -44,24 +47,10 @@ export default function WarehouseDashboard() {
 
       setOrders(data || []);
       
-    } catch (err) {
-      console.error('Error loading orders:', err);
+    } catch {
+      console.log('Error loading orders');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadProducts = async () => {
-    try {
-      const { data } = await supabase
-        .from('products')
-        .select('*')
-        .eq('is_active', true)
-        .order('category, name');
-
-      setAllProducts(data || []);
-    } catch (err) {
-      console.error('Error loading products:', err);
     }
   };
 
@@ -159,51 +148,62 @@ export default function WarehouseDashboard() {
       setShowOrderDetails(false);
       alert(`✅ סטטוס ההזמנה עודכן ל-${newStatus}`);
       
-    } catch (err) {
-      console.error('Error updating order status:', err);
+    } catch {
       alert('שגיאה בעדכון סטטוס ההזמנה');
     }
   };
 
-  // פונקציות הדפסה וייצוא
+  // פונקציית הדפסה מתוקנת
   const printOrder = (order) => {
-    const printWindow = window.open('', '_blank');
+    // יצירת חלון הדפסה
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    
+    if (!printWindow) {
+      alert('לא ניתן לפתוח חלון הדפסה. אנא בדוק את הגדרות החסימה בדפדפן.');
+      return;
+    }
+
     const printContent = generatePrintHTML(order);
     
     printWindow.document.write(printContent);
     printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
+    
+    // המתן לטעינה ואז הדפס
+    printWindow.onload = function() {
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 500);
+    };
   };
 
   const generatePrintHTML = (order) => {
     // קיבוץ מוצרים לפי קטגוריה
-    const itemsByCategory = order.order_items.reduce((acc, item) => {
+    const itemsByCategory = order.order_items?.reduce((acc, item) => {
       const category = item.products?.category || 'אחר';
       if (!acc[category]) {
         acc[category] = [];
       }
       acc[category].push(item);
       return acc;
-    }, {});
+    }, {}) || {};
 
     const categoriesHTML = Object.entries(itemsByCategory).map(([category, items]) => `
-      <div class="category-section">
-        <h3 style="background: #f3f4f6; padding: 8px; margin: 10px 0 5px 0; font-weight: bold; border-right: 4px solid #3b82f6;">${category}</h3>
+      <div style="margin-bottom: 20px; page-break-inside: avoid;">
+        <h3 style="background: #e5e7eb; padding: 10px; margin: 0 0 10px 0; font-weight: bold; border-right: 4px solid #3b82f6; color: #1f2937;">${category}</h3>
         ${items.map(item => {
           const noteParts = item.notes ? item.notes.split(' | ') : ['', ''];
           const weight = noteParts[0]?.replace('משקל: ', '') || '';
           const notes = noteParts[1] || '';
           
           return `
-            <div style="padding: 8px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between;">
-              <div>
-                <strong>${item.products?.name || 'מוצר לא זמין'}</strong>
-                ${weight ? `<br><small>משקל: ${weight}</small>` : ''}
-                ${notes ? `<br><small>הערות: ${notes}</small>` : ''}
+            <div style="padding: 12px; border-bottom: 1px solid #d1d5db; display: flex; justify-content: space-between; align-items: center;">
+              <div style="flex: 1;">
+                <div style="font-weight: bold; font-size: 16px; color: #1f2937;">${item.products?.name || 'מוצר לא זמין'}</div>
+                ${weight ? `<div style="font-size: 14px; color: #6b7280; margin-top: 4px;">משקל: ${weight}</div>` : ''}
+                ${notes ? `<div style="font-size: 14px; color: #6b7280; margin-top: 4px;">הערות: ${notes}</div>` : ''}
               </div>
-              <div style="text-align: left; font-weight: bold; font-size: 1.2em;">
+              <div style="text-align: left; font-weight: bold; font-size: 18px; color: #1f2937; min-width: 100px;">
                 ${item.quantity} ${item.products?.unit || 'יח׳'}
               </div>
             </div>
@@ -217,54 +217,98 @@ export default function WarehouseDashboard() {
       <html dir="rtl" lang="he">
       <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>הזמנה ${order.order_number}</title>
         <style>
-          body { 
-            font-family: Arial, sans-serif; 
-            margin: 20px; 
-            line-height: 1.4;
-            font-size: 14px;
+          @media print {
+            body { margin: 0; padding: 20px; }
+            .no-print { display: none !important; }
           }
+          
+          body { 
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif; 
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+            font-size: 14px;
+            color: #1f2937;
+            background: white;
+          }
+          
           .header { 
-            border-bottom: 3px solid #333; 
-            padding-bottom: 15px; 
-            margin-bottom: 20px; 
+            border-bottom: 3px solid #1f2937; 
+            padding-bottom: 20px; 
+            margin-bottom: 30px; 
             text-align: center;
           }
+          
+          .header h1 {
+            font-size: 28px;
+            margin: 0 0 10px 0;
+            color: #1f2937;
+          }
+          
           .info-grid { 
             display: grid; 
             grid-template-columns: 1fr 1fr; 
-            gap: 20px; 
-            margin-bottom: 20px; 
+            gap: 30px; 
+            margin-bottom: 30px; 
           }
+          
           .info-box { 
-            border: 1px solid #ddd; 
-            padding: 10px; 
-            border-radius: 5px; 
+            border: 2px solid #e5e7eb; 
+            padding: 15px; 
+            border-radius: 8px;
+            background: #f9fafb;
           }
-          .category-section { 
-            margin-bottom: 15px; 
-            page-break-inside: avoid;
+          
+          .info-box h3 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            color: #1f2937;
           }
+          
+          .info-box p {
+            margin: 8px 0;
+            font-size: 14px;
+          }
+          
           .items-container {
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
             overflow: hidden;
+            background: white;
           }
-          @media print {
-            body { margin: 0; }
-            .no-print { display: none; }
-            .category-section { 
-              page-break-inside: avoid; 
-              margin-bottom: 20px;
-            }
+          
+          .items-header {
+            background: #1f2937;
+            color: white;
+            padding: 15px;
+            margin: 0;
+            font-size: 20px;
+            font-weight: bold;
+          }
+          
+          .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 12px;
+            color: #6b7280;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 20px;
           }
         </style>
       </head>
       <body>
         <div class="header">
           <h1>🥩 הזמנה מספר ${order.order_number}</h1>
-          <p style="color: #666;">תאריך הדפסה: ${new Date().toLocaleDateString('he-IL')}</p>
+          <p style="color: #6b7280; font-size: 16px;">תאריך הדפסה: ${new Date().toLocaleDateString('he-IL', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}</p>
         </div>
         
         <div class="info-grid">
@@ -278,27 +322,34 @@ export default function WarehouseDashboard() {
           
           <div class="info-box">
             <h3>פרטי הזמנה</h3>
-            <p><strong>תאריך אספקה:</strong> ${new Date(order.delivery_date).toLocaleDateString('he-IL')}</p>
+            <p><strong>תאריך אספקה:</strong> ${new Date(order.delivery_date).toLocaleDateString('he-IL', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })}</p>
             <p><strong>סטטוס:</strong> ${order.status}</p>
-            <p><strong>סה"כ פריטים:</strong> ${order.order_items?.length || 0}</p>
+            <p><strong>סה"כ פריטים:</strong> ${order.order_items?.length || 0} מוצרים</p>
             <p><strong>נוצרה:</strong> ${new Date(order.created_at).toLocaleDateString('he-IL')}</p>
           </div>
         </div>
 
         ${order.notes ? `
-          <div class="info-box" style="margin-bottom: 20px;">
+          <div class="info-box" style="margin-bottom: 30px;">
             <h3>הערות כלליות</h3>
-            <p>${order.notes}</p>
+            <p style="background: white; padding: 10px; border-radius: 4px; border: 1px solid #e5e7eb;">${order.notes}</p>
           </div>
         ` : ''}
         
         <div class="items-container">
-          <h2 style="background: #333; color: white; padding: 10px; margin: 0;">פריטי ההזמנה</h2>
-          ${categoriesHTML}
+          <h2 class="items-header">פריטי ההזמנה מסודרים לפי קטגוריה</h2>
+          <div style="padding: 15px;">
+            ${categoriesHTML}
+          </div>
         </div>
         
-        <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #666;">
-          <p>הודפס ממערכת הזמנות דיגיטלית | ${new Date().toLocaleString('he-IL')}</p>
+        <div class="footer">
+          <p><strong>הודפס ממערכת הזמנות דיגיטלית</strong></p>
+          <p>${new Date().toLocaleString('he-IL')}</p>
         </div>
       </body>
       </html>
@@ -360,128 +411,14 @@ export default function WarehouseDashboard() {
     return '\uFEFF' + [headers.join(','), ...rows].join('\n');
   };
 
-  // פונקציות עריכה
-  const startEditOrder = (order) => {
-    setEditingOrder(order);
-    setEditDeliveryDate(order.delivery_date);
-    setEditNotes(order.notes || '');
-    
-    const items = order.order_items.map(item => {
-      const noteParts = item.notes ? item.notes.split(' | ') : ['', ''];
-      const weight = noteParts[0]?.replace('משקל: ', '') || '';
-      const notes = noteParts[1] || '';
-      
-      return {
-        id: item.id,
-        product_id: item.product_id,
-        product_name: item.products.name,
-        category: item.products.category,
-        quantity: item.quantity,
-        weight: weight,
-        notes: notes,
-        unit: item.products.unit
-      };
-    });
-    
-    setEditOrderItems(items);
-    setShowOrderDetails(false);
-  };
-
-  const updateEditQuantity = (itemIndex, quantity) => {
-    if (quantity <= 0) {
-      setEditOrderItems(editOrderItems.filter((_, index) => index !== itemIndex));
-    } else {
-      setEditOrderItems(editOrderItems.map((item, index) =>
-        index === itemIndex ? { ...item, quantity } : item
-      ));
-    }
-  };
-
-  const updateEditItemField = (itemIndex, field, value) => {
-    setEditOrderItems(editOrderItems.map((item, index) =>
-      index === itemIndex ? { ...item, [field]: value } : item
-    ));
-  };
-
-  const addProductToEdit = (product) => {
-    const existingIndex = editOrderItems.findIndex(item => item.product_id === product.id);
-    
-    if (existingIndex >= 0) {
-      updateEditQuantity(existingIndex, editOrderItems[existingIndex].quantity + 1);
-    } else {
-      setEditOrderItems([...editOrderItems, {
-        id: null,
-        product_id: product.id,
-        product_name: product.name,
-        category: product.category,
-        quantity: 1,
-        weight: '',
-        notes: '',
-        unit: product.unit
-      }]);
-    }
-  };
-
-  const saveOrderEdit = async () => {
-    if (!editingOrder) return;
-    
-    try {
-      await supabase
-        .from('orders')
-        .update({
-          delivery_date: editDeliveryDate,
-          notes: editNotes,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', editingOrder.id);
-
-      await supabase
-        .from('order_items')
-        .delete()
-        .eq('order_id', editingOrder.id);
-
-      const orderItemsData = editOrderItems.map(item => ({
-        order_id: editingOrder.id,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        notes: `${item.weight ? `משקל: ${item.weight} | ` : ''}${item.notes || ''}`
-      }));
-
-      if (orderItemsData.length > 0) {
-        await supabase
-          .from('order_items')
-          .insert(orderItemsData);
-      }
-
-      setEditingOrder(null);
-      setEditOrderItems([]);
-      setEditNotes('');
-      setEditDeliveryDate('');
-      loadOrders();
-      
-      alert(`✅ הזמנה ${editingOrder.order_number} עודכנה בהצלחה!`);
-      
-    } catch (err) {
-      console.error('Error updating order:', err);
-      alert('❌ שגיאה בעדכון ההזמנה: ' + err.message);
-    }
-  };
-
-  const cancelEdit = () => {
-    setEditingOrder(null);
-    setEditOrderItems([]);
-    setEditNotes('');
-    setEditDeliveryDate('');
-  };
-
   const getStatusColor = (status) => {
     switch (status) {
-      case 'חדשה': return 'bg-blue-100 text-blue-800';
-      case 'בטיפול': return 'bg-yellow-100 text-yellow-800';
-      case 'נשלחה': return 'bg-purple-100 text-purple-800';
-      case 'הושלמה': return 'bg-green-100 text-green-800';
-      case 'בוטלה': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'חדשה': return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'בטיפול': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'נשלחה': return 'bg-purple-100 text-purple-800 border-purple-300';
+      case 'הושלמה': return 'bg-green-100 text-green-800 border-green-300';
+      case 'בוטלה': return 'bg-red-100 text-red-800 border-red-300';
+      default: return 'bg-gray-100 text-gray-800 border-gray-300';
     }
   };
 
@@ -503,7 +440,7 @@ export default function WarehouseDashboard() {
           <div className="mt-4">
             <button
               onClick={() => window.open('/', '_blank')}
-              className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-colors"
+              className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-colors font-bold"
             >
               🏪 חזרה לטופס הזמנות
             </button>
@@ -511,23 +448,23 @@ export default function WarehouseDashboard() {
         </div>
 
         {/* כפתורי ייצוא */}
-        <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+        <div className="bg-white p-6 rounded-lg shadow-lg mb-6 border-2 border-gray-200">
           <div className="flex justify-between items-center">
-            <h3 className="font-bold text-gray-800">פעולות כלליות</h3>
+            <h3 className="font-bold text-gray-800 text-lg">פעולות כלליות</h3>
             <button
               onClick={exportToExcel}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
+              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center font-bold"
             >
-              <Download size={16} className="ml-1" />
+              <Download size={18} className="ml-2" />
               ייצא לאקסל
             </button>
           </div>
         </div>
 
         {/* סינון */}
-        <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-          <h3 className="font-bold text-gray-800 mb-4">סינון הזמנות</h3>
-          <div className="flex flex-wrap gap-2">
+        <div className="bg-white p-6 rounded-lg shadow-lg mb-6 border-2 border-gray-200">
+          <h3 className="font-bold text-gray-800 mb-4 text-lg">סינון הזמנות</h3>
+          <div className="flex flex-wrap gap-3">
             {[
               { key: 'all', label: 'כל ההזמנות', count: orders.length },
               { key: 'חדשה', label: 'חדשות', count: orders.filter(o => o.status === 'חדשה').length },
@@ -538,10 +475,10 @@ export default function WarehouseDashboard() {
               <button
                 key={filterOption.key}
                 onClick={() => setFilter(filterOption.key)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`px-6 py-3 rounded-lg font-bold transition-colors border-2 ${
                   filter === filterOption.key
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-blue-500 text-white border-blue-600 shadow-lg'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
                 }`}
               >
                 {filterOption.label} ({filterOption.count})
@@ -553,47 +490,47 @@ export default function WarehouseDashboard() {
         {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="mt-4 text-gray-600">טוען הזמנות...</p>
+            <p className="mt-4 text-gray-600 font-medium">טוען הזמנות...</p>
           </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-6">
             {filteredOrders.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-lg shadow-md">
+              <div className="text-center py-12 bg-white rounded-lg shadow-lg border-2 border-gray-200">
                 <Package size={48} className="mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-600">אין הזמנות להצגה</p>
+                <p className="text-gray-600 font-medium">אין הזמנות להצגה</p>
               </div>
             ) : (
               filteredOrders.map(order => (
-                <div key={order.id} className="bg-white p-6 rounded-lg shadow-md border hover:shadow-lg transition-shadow">
+                <div key={order.id} className="bg-white p-6 rounded-lg shadow-lg border-2 border-gray-200 hover:shadow-xl transition-all duration-200">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-3 space-x-reverse mb-2">
+                      <div className="flex items-center space-x-3 space-x-reverse mb-3">
                         <h3 className="text-xl font-bold text-gray-800">
                           הזמנה #{order.order_number}
                         </h3>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
+                        <span className={`px-4 py-2 rounded-full text-sm font-bold border-2 ${getStatusColor(order.status)}`}>
                           {order.status}
                         </span>
                       </div>
                       
-                      <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
-                        <div>
-                          <p><strong>לקוח:</strong> {order.customers?.name || 'לא צוין'}</p>
-                          <p><strong>קוד לקוח:</strong> {order.customers?.code || 'אין'}</p>
+                      <div className="grid md:grid-cols-2 gap-4 text-sm">
+                        <div className="space-y-1">
+                          <p className="text-gray-800"><span className="font-bold text-gray-900">לקוח:</span> {order.customers?.name || 'לא צוין'}</p>
+                          <p className="text-gray-800"><span className="font-bold text-gray-900">קוד לקוח:</span> {order.customers?.code || 'אין'}</p>
                         </div>
-                        <div>
-                          <p><strong>תאריך אספקה:</strong> {new Date(order.delivery_date).toLocaleDateString('he-IL')}</p>
-                          <p><strong>נוצרה:</strong> {new Date(order.created_at).toLocaleDateString('he-IL')}</p>
+                        <div className="space-y-1">
+                          <p className="text-gray-800"><span className="font-bold text-gray-900">תאריך אספקה:</span> {new Date(order.delivery_date).toLocaleDateString('he-IL')}</p>
+                          <p className="text-gray-800"><span className="font-bold text-gray-900">נוצרה:</span> {new Date(order.created_at).toLocaleDateString('he-IL')}</p>
                         </div>
                       </div>
                       
                       <div className="mt-3">
-                        <p className="text-sm text-gray-600">
-                          <strong>פריטים:</strong> {order.order_items?.length || 0} מוצרים
+                        <p className="text-sm text-gray-800">
+                          <span className="font-bold text-gray-900">פריטים:</span> {order.order_items?.length || 0} מוצרים
                         </p>
                         {order.notes && (
-                          <p className="text-sm text-gray-600 mt-1">
-                            <strong>הערות:</strong> {order.notes}
+                          <p className="text-sm text-gray-800 mt-1">
+                            <span className="font-bold text-gray-900">הערות:</span> {order.notes}
                           </p>
                         )}
                       </div>
@@ -602,7 +539,7 @@ export default function WarehouseDashboard() {
                     <div className="flex flex-wrap gap-2">
                       <button
                         onClick={() => printOrder(order)}
-                        className="bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center"
+                        className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center font-bold border-2 border-gray-700"
                       >
                         <Printer size={16} className="ml-1" />
                         הדפס
@@ -613,33 +550,25 @@ export default function WarehouseDashboard() {
                           setSelectedOrder(order);
                           setShowOrderDetails(true);
                         }}
-                        className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center"
+                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center font-bold border-2 border-blue-600"
                       >
                         <Eye size={16} className="ml-1" />
                         צפה
                       </button>
                       
-                      <button
-                        onClick={() => startEditOrder(order)}
-                        className="bg-orange-500 text-white px-3 py-2 rounded-lg hover:bg-orange-600 transition-colors flex items-center"
-                      >
-                        <Edit size={16} className="ml-1" />
-                        ערוך
-                      </button>
-                      
                       {order.status === 'חדשה' && (
                         <button
                           onClick={() => updateOrderStatus(order.id, 'בטיפול')}
-                          className="bg-yellow-500 text-white px-3 py-2 rounded-lg hover:bg-yellow-600 transition-colors"
+                          className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors font-bold border-2 border-yellow-600"
                         >
                           🔄 התחל טיפול
                         </button>
                       )}
                       
-                      {order.status === 'בטיפול' && (
+                      {order.status === 'בטיטול' && (
                         <button
                           onClick={() => updateOrderStatus(order.id, 'נשלחה')}
-                          className="bg-purple-500 text-white px-3 py-2 rounded-lg hover:bg-purple-600 transition-colors"
+                          className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors font-bold border-2 border-purple-600"
                         >
                           🚚 סמן כנשלחה
                         </button>
@@ -648,7 +577,7 @@ export default function WarehouseDashboard() {
                       {order.status === 'נשלחה' && (
                         <button
                           onClick={() => updateOrderStatus(order.id, 'הושלמה')}
-                          className="bg-green-500 text-white px-3 py-2 rounded-lg hover:bg-green-600 transition-colors"
+                          className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors font-bold border-2 border-green-600"
                         >
                           ✅ סמן כהושלמה
                         </button>
@@ -664,8 +593,8 @@ export default function WarehouseDashboard() {
         {/* חלון פרטי הזמנה */}
         {showOrderDetails && selectedOrder && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto border-4 border-gray-300">
+              <div className="p-6 border-b-2 border-gray-200 bg-gray-50">
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold text-gray-800">
                     פרטי הזמנה #{selectedOrder.order_number}
@@ -673,14 +602,14 @@ export default function WarehouseDashboard() {
                   <div className="flex space-x-2 space-x-reverse">
                     <button
                       onClick={() => printOrder(selectedOrder)}
-                      className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center"
+                      className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center font-bold border-2 border-gray-700"
                     >
                       <Printer size={16} className="ml-1" />
                       הדפס
                     </button>
                     <button
                       onClick={() => setShowOrderDetails(false)}
-                      className="text-gray-500 hover:text-gray-700 text-2xl"
+                      className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
                     >
                       ×
                     </button>
@@ -691,28 +620,28 @@ export default function WarehouseDashboard() {
               <div className="p-6">
                 <div className="grid md:grid-cols-2 gap-6 mb-6">
                   <div>
-                    <h3 className="font-bold text-gray-800 mb-3">פרטי לקוח</h3>
-                    <div className="space-y-2 text-sm">
-                      <p><strong>שם:</strong> {selectedOrder.customers?.name || 'לא צוין'}</p>
-                      <p><strong>קוד:</strong> {selectedOrder.customers?.code || 'אין'}</p>
-                      <p><strong>טלפון:</strong> {selectedOrder.customers?.phone || 'לא צוין'}</p>
-                      <p><strong>כתובת:</strong> {selectedOrder.customers?.address || 'לא צוינה'}</p>
+                    <h3 className="font-bold text-gray-800 mb-3 text-lg">פרטי לקוח</h3>
+                    <div className="space-y-2 text-sm bg-gray-50 p-4 rounded-lg border-2 border-gray-200">
+                      <p className="text-gray-800"><span className="font-bold text-gray-900">שם:</span> {selectedOrder.customers?.name || 'לא צוין'}</p>
+                      <p className="text-gray-800"><span className="font-bold text-gray-900">קוד:</span> {selectedOrder.customers?.code || 'אין'}</p>
+                      <p className="text-gray-800"><span className="font-bold text-gray-900">טלפון:</span> {selectedOrder.customers?.phone || 'לא צוין'}</p>
+                      <p className="text-gray-800"><span className="font-bold text-gray-900">כתובת:</span> {selectedOrder.customers?.address || 'לא צוינה'}</p>
                     </div>
                   </div>
                   
                   <div>
-                    <h3 className="font-bold text-gray-800 mb-3">פרטי הזמנה</h3>
-                    <div className="space-y-2 text-sm">
-                      <p><strong>תאריך אספקה:</strong> {new Date(selectedOrder.delivery_date).toLocaleDateString('he-IL')}</p>
-                      <p><strong>סטטוס:</strong> <span className={`px-2 py-1 rounded text-xs ${getStatusColor(selectedOrder.status)}`}>{selectedOrder.status}</span></p>
-                      <p><strong>נוצרה:</strong> {new Date(selectedOrder.created_at).toLocaleDateString('he-IL')}</p>
-                      <p><strong>עודכנה:</strong> {new Date(selectedOrder.updated_at).toLocaleDateString('he-IL')}</p>
+                    <h3 className="font-bold text-gray-800 mb-3 text-lg">פרטי הזמנה</h3>
+                    <div className="space-y-2 text-sm bg-gray-50 p-4 rounded-lg border-2 border-gray-200">
+                      <p className="text-gray-800"><span className="font-bold text-gray-900">תאריך אספקה:</span> {new Date(selectedOrder.delivery_date).toLocaleDateString('he-IL')}</p>
+                      <p className="text-gray-800"><span className="font-bold text-gray-900">סטטוס:</span> <span className={`px-2 py-1 rounded text-xs font-bold border ${getStatusColor(selectedOrder.status)}`}>{selectedOrder.status}</span></p>
+                      <p className="text-gray-800"><span className="font-bold text-gray-900">נוצרה:</span> {new Date(selectedOrder.created_at).toLocaleDateString('he-IL')}</p>
+                      <p className="text-gray-800"><span className="font-bold text-gray-900">עודכנה:</span> {new Date(selectedOrder.updated_at).toLocaleDateString('he-IL')}</p>
                     </div>
                   </div>
                 </div>
                 
                 <div className="mb-6">
-                  <h3 className="font-bold text-gray-800 mb-3">פריטי הזמנה (מקובצים לפי קטגוריה)</h3>
+                  <h3 className="font-bold text-gray-800 mb-3 text-lg">פריטי הזמנה (מקובצים לפי קטגוריה)</h3>
                   {(() => {
                     // קיבוץ פריטים לפי קטגוריה
                     const itemsByCategory = selectedOrder.order_items?.reduce((acc, item) => {
@@ -725,24 +654,24 @@ export default function WarehouseDashboard() {
                     }, {}) || {};
 
                     return Object.entries(itemsByCategory).map(([category, items]) => (
-                      <div key={category} className="mb-4 border rounded-lg overflow-hidden">
-                        <div className="bg-blue-50 px-4 py-2 border-b">
-                          <h4 className="font-bold text-blue-800">{category}</h4>
+                      <div key={category} className="mb-4 border-2 border-gray-200 rounded-lg overflow-hidden">
+                        <div className="bg-blue-50 px-4 py-3 border-b-2 border-blue-200">
+                          <h4 className="font-bold text-blue-800 text-lg">{category}</h4>
                         </div>
-                        <div className="divide-y">
+                        <div className="divide-y-2 divide-gray-100">
                           {items.map((item, index) => {
                             const noteParts = item.notes ? item.notes.split(' | ') : ['', ''];
                             const weight = noteParts[0]?.replace('משקל: ', '') || '';
                             const notes = noteParts[1] || '';
                             
                             return (
-                              <div key={index} className="p-3 flex justify-between items-center">
+                              <div key={index} className="p-4 flex justify-between items-center bg-white hover:bg-gray-50">
                                 <div className="flex-1">
-                                  <p className="font-medium">{item.products?.name || 'מוצר לא זמין'}</p>
-                                  {weight && <p className="text-sm text-gray-600">משקל: {weight}</p>}
-                                  {notes && <p className="text-sm text-gray-600">הערות: {notes}</p>}
+                                  <p className="font-bold text-gray-800 text-lg">{item.products?.name || 'מוצר לא זמין'}</p>
+                                  {weight && <p className="text-sm text-gray-600 font-medium">משקל: {weight}</p>}
+                                  {notes && <p className="text-sm text-gray-600 font-medium">הערות: {notes}</p>}
                                 </div>
-                                <div className="text-left font-bold text-lg">
+                                <div className="text-left font-bold text-xl text-gray-800 min-w-[120px]">
                                   {item.quantity} {item.products?.unit || 'יח׳'}
                                 </div>
                               </div>
@@ -756,8 +685,8 @@ export default function WarehouseDashboard() {
                 
                 {selectedOrder.notes && (
                   <div className="mb-6">
-                    <h3 className="font-bold text-gray-800 mb-3">הערות כלליות</h3>
-                    <p className="bg-gray-50 p-4 rounded-lg">{selectedOrder.notes}</p>
+                    <h3 className="font-bold text-gray-800 mb-3 text-lg">הערות כלליות</h3>
+                    <p className="bg-yellow-50 p-4 rounded-lg border-2 border-yellow-200 text-gray-800 font-medium">{selectedOrder.notes}</p>
                   </div>
                 )}
                 
@@ -765,7 +694,7 @@ export default function WarehouseDashboard() {
                   {selectedOrder.status === 'חדשה' && (
                     <button
                       onClick={() => updateOrderStatus(selectedOrder.id, 'בטיפול')}
-                      className="bg-yellow-500 text-white px-6 py-3 rounded-lg hover:bg-yellow-600 transition-colors"
+                      className="bg-yellow-500 text-white px-6 py-3 rounded-lg hover:bg-yellow-600 transition-colors font-bold border-2 border-yellow-600"
                     >
                       🔄 התחל טיפול
                     </button>
@@ -774,7 +703,7 @@ export default function WarehouseDashboard() {
                   {selectedOrder.status === 'בטיפול' && (
                     <button
                       onClick={() => updateOrderStatus(selectedOrder.id, 'נשלחה')}
-                      className="bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600 transition-colors"
+                      className="bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600 transition-colors font-bold border-2 border-purple-600"
                     >
                       🚚 סמן כנשלחה
                     </button>
@@ -783,7 +712,7 @@ export default function WarehouseDashboard() {
                   {selectedOrder.status === 'נשלחה' && (
                     <button
                       onClick={() => updateOrderStatus(selectedOrder.id, 'הושלמה')}
-                      className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors"
+                      className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors font-bold border-2 border-green-600"
                     >
                       ✅ סמן כהושלמה
                     </button>
@@ -792,184 +721,11 @@ export default function WarehouseDashboard() {
                   {selectedOrder.status !== 'בוטלה' && selectedOrder.status !== 'הושלמה' && (
                     <button
                       onClick={() => updateOrderStatus(selectedOrder.id, 'בוטלה')}
-                      className="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors"
+                      className="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors font-bold border-2 border-red-600"
                     >
                       ❌ בטל הזמנה
                     </button>
                   )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* חלון עריכת הזמנה */}
-        {editingOrder && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold text-gray-800">
-                    ✏️ עריכת הזמנה #{editingOrder.order_number}
-                  </h2>
-                  <button
-                    onClick={cancelEdit}
-                    className="text-gray-500 hover:text-gray-700 text-2xl"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-              
-              <div className="p-6">
-                <div className="grid md:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <h3 className="font-bold text-gray-800 mb-3">פרטי לקוח</h3>
-                    <div className="space-y-2 text-sm bg-gray-50 p-4 rounded">
-                      <p><strong>שם:</strong> {editingOrder.customers?.name || 'לא צוין'}</p>
-                      <p><strong>קוד:</strong> {editingOrder.customers?.code || 'אין'}</p>
-                      <p><strong>טלפון:</strong> {editingOrder.customers?.phone || 'לא צוין'}</p>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h3 className="font-bold text-gray-800 mb-3">עריכת פרטי הזמנה</h3>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">תאריך אספקה</label>
-                        <input
-                          type="date"
-                          value={editDeliveryDate}
-                          onChange={(e) => setEditDeliveryDate(e.target.value)}
-                          className="w-full border rounded px-3 py-2 focus:border-blue-500 focus:outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">הערות כלליות</label>
-                        <textarea
-                          value={editNotes}
-                          onChange={(e) => setEditNotes(e.target.value)}
-                          placeholder="הערות להזמנה..."
-                          className="w-full border rounded px-3 py-2 focus:border-blue-500 focus:outline-none"
-                          rows="3"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* עריכת פריטי הזמנה */}
-                <div className="mb-6">
-                  <h3 className="font-bold text-gray-800 mb-3">עריכת פריטי הזמנה</h3>
-                  <div className="space-y-4 max-h-80 overflow-y-auto border rounded p-4">
-                    {editOrderItems.map((item, index) => (
-                      <div key={index} className="p-4 bg-gray-50 rounded-lg border">
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-800">{item.product_name}</div>
-                            <div className="text-sm text-gray-500">{item.category}</div>
-                          </div>
-                          <button
-                            onClick={() => updateEditQuantity(index, 0)}
-                            className="text-red-500 hover:text-red-700 text-sm"
-                          >
-                            ✖ הסר
-                          </button>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">כמות</label>
-                            <div className="flex items-center space-x-2 space-x-reverse">
-                              <button
-                                onClick={() => updateEditQuantity(index, item.quantity - 1)}
-                                className="w-8 h-8 bg-red-500 text-white rounded-full hover:bg-red-600 flex items-center justify-center"
-                              >
-                                <Minus size={16} />
-                              </button>
-                              <input
-                                type="number"
-                                value={item.quantity}
-                                onChange={(e) => updateEditQuantity(index, parseInt(e.target.value) || 0)}
-                                className="w-16 text-center border rounded px-2 py-1"
-                                min="1"
-                              />
-                              <button
-                                onClick={() => updateEditQuantity(index, item.quantity + 1)}
-                                className="w-8 h-8 bg-green-500 text-white rounded-full hover:bg-green-600 flex items-center justify-center"
-                              >
-                                <Plus size={16} />
-                              </button>
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">משקל</label>
-                            <input
-                              type="text"
-                              value={item.weight || ''}
-                              onChange={(e) => updateEditItemField(index, 'weight', e.target.value)}
-                              placeholder="כמה ק״ג?"
-                              className="w-full border rounded px-3 py-1 text-sm focus:border-blue-500 focus:outline-none"
-                            />
-                          </div>
-                          
-                          <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">הערות</label>
-                            <input
-                              type="text"
-                              value={item.notes || ''}
-                              onChange={(e) => updateEditItemField(index, 'notes', e.target.value)}
-                              placeholder="הערות למוצר..."
-                              className="w-full border rounded px-3 py-1 text-sm focus:border-blue-500 focus:outline-none"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* הוספת מוצרים חדשים */}
-                <div className="mb-6">
-                  <h3 className="font-bold text-gray-800 mb-3">הוסף מוצרים להזמנה</h3>
-                  <div className="max-h-48 overflow-y-auto border rounded p-4">
-                    <div className="grid gap-2">
-                      {allProducts.map(product => (
-                        <div key={product.id} className="flex justify-between items-center p-2 bg-gray-50 rounded hover:bg-gray-100">
-                          <div className="flex-1">
-                            <span className="font-medium text-gray-800">{product.name}</span>
-                            <div className="text-sm text-gray-500">
-                              <span className="bg-blue-100 px-2 py-1 rounded mr-2">{product.category}</span>
-                              <span>{product.unit || 'יחידה'}</span>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => addProductToEdit(product)}
-                            className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition-colors text-sm"
-                          >
-                            ➕ הוסף
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex space-x-4 space-x-reverse">
-                  <button
-                    onClick={saveOrderEdit}
-                    className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors font-medium"
-                  >
-                    💾 שמור שינויים
-                  </button>
-                  
-                  <button
-                    onClick={cancelEdit}
-                    className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors"
-                  >
-                    ❌ בטל
-                  </button>
                 </div>
               </div>
             </div>

@@ -1,23 +1,33 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Search, Plus, Minus, ShoppingCart, Calendar, User, Package } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, Package, Edit3 } from 'lucide-react';
+import LoginSystem from '../components/LoginSystem';
+import OrderForm from './OrderForm'; // העבר את הקוד לקומפוננטה נפרדת
+
+export default function Page() {
+  return (
+    <LoginSystem requiredRole="field_agent">
+      <OrderForm />
+    </LoginSystem>
+  );
+}
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-export default function HomePage() {
+export default function OrderForm() {
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState('');
-  const [deliveryDate, setDeliveryDate] = useState('');
   const [orderItems, setOrderItems] = useState([]);
+  const [deliveryDate, setDeliveryDate] = useState('');
   const [notes, setNotes] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [newCustomer, setNewCustomer] = useState({
@@ -31,7 +41,6 @@ export default function HomePage() {
   const [showOrdersList, setShowOrdersList] = useState(false);
   const [allOrders, setAllOrders] = useState([]);
 
-  // טעינת נתונים בטעינת הקומפוננטה
   useEffect(() => {
     loadCustomers();
     loadProducts();
@@ -43,216 +52,33 @@ export default function HomePage() {
   }, []);
 
   const loadCustomers = async () => {
-    const { data, error } = await supabase
-      .from('customers')
-      .select('*')
-      .order('name');
-    
-    if (error) {
-      console.error('Error loading customers:', error);
-      setMessage('שגיאה בטעינת לקוחות');
-    } else {
+    try {
+      const { data } = await supabase
+        .from('customers')
+        .select('*')
+        .order('name');
       setCustomers(data || []);
+    } catch (err) {
+      console.log('Error loading customers');
     }
   };
 
   const loadProducts = async () => {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('is_active', true)
-      .order('category, name');
-    
-    if (error) {
-      console.error('Error loading products:', error);
-      setMessage('שגיאה בטעינת מוצרים');
-    } else {
+    try {
+      const { data } = await supabase
+        .from('products')
+        .select('*')
+        .eq('is_active', true)
+        .order('category, name');
       setProducts(data || []);
-    }
-  };
-
-  // קיבוץ מוצרים לפי קטגוריה
-  const productsByCategory = products.reduce((acc, product) => {
-    if (!acc[product.category]) {
-      acc[product.category] = [];
-    }
-    acc[product.category].push(product);
-    return acc;
-  }, {});
-
-  const categories = Object.keys(productsByCategory);
-
-  // סינון מוצרים לפי חיפוש וקטגוריה
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.category.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !selectedCategory || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-
-  const addToOrder = (product) => {
-    const existingItem = orderItems.find(item => item.product_id === product.id);
-    
-    if (existingItem) {
-      setOrderItems(orderItems.map(item =>
-        item.product_id === product.id
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      ));
-    } else {
-      setOrderItems([...orderItems, {
-        product_id: product.id,
-        product_name: product.name,
-        category: product.category,
-        quantity: 1,
-        weight: '',
-        notes: '',
-        unit: product.unit
-      }]);
-    }
-  };
-
-  const updateQuantity = (productId, quantity) => {
-    if (quantity <= 0) {
-      setOrderItems(orderItems.filter(item => item.product_id !== productId));
-    } else {
-      setOrderItems(orderItems.map(item =>
-        item.product_id === productId
-          ? { ...item, quantity }
-          : item
-      ));
-    }
-  };
-
-  const updateItemField = (productId, field, value) => {
-    setOrderItems(orderItems.map(item =>
-      item.product_id === productId
-        ? { ...item, [field]: value }
-        : item
-    ));
-  };
-
-  const getTotalItems = () => {
-    return orderItems.reduce((total, item) => total + item.quantity, 0);
-  };
-
-  const submitOrder = async (e) => {
-    e.preventDefault();
-    
-    if (!selectedCustomer) {
-      setMessage('יש לבחור לקוח');
-      return;
-    }
-    
-    if (orderItems.length === 0) {
-      setMessage('יש להוסיף לפחות מוצר אחד להזמנה');
-      return;
-    }
-
-    setLoading(true);
-    setMessage('');
-
-    try {
-      // יצירת מספר הזמנה ייחודי
-      const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-      
-      // יצירת ההזמנה
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          customer_id: selectedCustomer,
-          order_number: orderNumber,
-          delivery_date: deliveryDate,
-          notes: notes,
-          status: 'חדשה'
-        })
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // הוספת פריטי ההזמנה עם כל הפרטים
-      const orderItemsData = orderItems.map(item => ({
-        order_id: order.id,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        notes: `${item.weight ? `משקל: ${item.weight} | ` : ''}${item.notes || ''}`
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItemsData);
-
-      if (itemsError) throw itemsError;
-
-      // הודעת הצלחה
-      const customerName = customers.find(c => c.id == selectedCustomer)?.name || 'לקוח';
-      setMessage(`🎉 הזמנה ${orderNumber} נשלחה בהצלחה ללקוח ${customerName}!`);
-      
-      // איפוס הטופס
-      setSelectedCustomer('');
-      setOrderItems([]);
-      setNotes('');
-      setSearchTerm('');
-      setSelectedCategory('');
-      
-    } catch (error) {
-      console.error('Error submitting order:', error);
-      setMessage('❌ שגיאה בשליחת ההזמנה: ' + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const clearOrder = () => {
-    setOrderItems([]);
-    setNotes('');
-    setSearchTerm('');
-    setSelectedCategory('');
-    setMessage('');
-  };
-
-  const addNewCustomer = async () => {
-    if (!newCustomer.name) {
-      setMessage('יש למלא את שם הלקוח');
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('customers')
-        .insert([{
-          name: newCustomer.name,
-          code: newCustomer.code || null, // קוד אופציונלי
-          phone: newCustomer.phone,
-          address: newCustomer.address,
-          contact_person: newCustomer.contact_person
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // הוסף את הלקוח החדש לרשימה
-      setCustomers([...customers, data]);
-      
-      // בחר את הלקוח החדש אוטומטית
-      setSelectedCustomer(data.id);
-      
-      // איפוס הטופס ובסגירת החלון
-      setNewCustomer({ name: '', code: '', phone: '', address: '', contact_person: '' });
-      setShowAddCustomer(false);
-      setMessage(`✅ לקוח ${data.name} נוסף בהצלחה ונבחר!`);
-      
-    } catch (error) {
-      console.error('Error adding customer:', error);
-      setMessage('❌ שגיאה בהוספת הלקוח: ' + error.message);
+    } catch (err) {
+      console.log('Error loading products');
     }
   };
 
   const loadAllOrders = async () => {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('orders')
         .select(`
           *,
@@ -264,20 +90,54 @@ export default function HomePage() {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
       setAllOrders(data || []);
-    } catch (error) {
-      console.error('Error loading orders:', error);
+    } catch (err) {
+      console.log('Error loading orders');
+    }
+  };
+
+  const addNewCustomer = async () => {
+    if (!newCustomer.name) {
+      setMessage('❌ יש למלא את שם הלקוח');
+      return;
+    }
+
+    try {
+      const { data } = await supabase
+        .from('customers')
+        .insert([{
+          name: newCustomer.name,
+          code: newCustomer.code || null,
+          phone: newCustomer.phone,
+          address: newCustomer.address,
+          contact_person: newCustomer.contact_person
+        }])
+        .select()
+        .single();
+
+      setCustomers([...customers, data]);
+      setSelectedCustomer(data.id);
+      setNewCustomer({ name: '', code: '', phone: '', address: '', contact_person: '' });
+      setShowAddCustomer(false);
+      setMessage(`✅ לקוח ${data.name} נוסף בהצלחה ונבחר!`);
+      
+    } catch (err) {
+      setMessage('❌ שגיאה בהוספת הלקוח');
     }
   };
 
   const loadOrderForEdit = (order) => {
+    // בדיקה אם ההזמנה בטיפול במחסן
+    if (order.status === 'בטיפול' || order.status === 'נשלחה' || order.status === 'הושלמה') {
+      setMessage('❌ לא ניתן לערוך הזמנה שכבר בטיפול במחסן');
+      return;
+    }
+
     setEditingOrder(order);
     setSelectedCustomer(order.customer_id);
     setDeliveryDate(order.delivery_date);
     setNotes(order.notes || '');
     
-    // טעינת פריטי ההזמנה
     const items = order.order_items.map(item => {
       const noteParts = item.notes ? item.notes.split(' | ') : ['', ''];
       const weight = noteParts[0]?.replace('משקל: ', '') || '';
@@ -296,22 +156,109 @@ export default function HomePage() {
     
     setOrderItems(items);
     setShowOrdersList(false);
-    setMessage(`📝 עורך הזמנה ${order.order_number}`);
+    setMessage(`📝 עורך הזמנה ${order.order_number} (סטטוס: ${order.status})`);
   };
 
-  const updateOrder = async (e) => {
+  const addProduct = (product) => {
+    const existingIndex = orderItems.findIndex(item => item.product_id === product.id);
+    
+    if (existingIndex >= 0) {
+      updateQuantity(existingIndex, orderItems[existingIndex].quantity + 1);
+    } else {
+      setOrderItems([...orderItems, {
+        product_id: product.id,
+        product_name: product.name,
+        category: product.category,
+        quantity: 1,
+        weight: '',
+        notes: '',
+        unit: product.unit
+      }]);
+    }
+  };
+
+  const updateQuantity = (index, quantity) => {
+    if (quantity <= 0) {
+      setOrderItems(orderItems.filter((_, i) => i !== index));
+    } else {
+      setOrderItems(orderItems.map((item, i) => 
+        i === index ? { ...item, quantity } : item
+      ));
+    }
+  };
+
+  const updateItemField = (index, field, value) => {
+    setOrderItems(orderItems.map((item, i) => 
+      i === index ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const submitOrder = async (e) => {
     e.preventDefault();
     
     if (!selectedCustomer || orderItems.length === 0) {
-      setMessage('יש למלא את כל השדות הנדרשים');
+      setMessage('❌ יש למלא את כל השדות הנדרשים');
       return;
     }
 
     setLoading(true);
     
     try {
-      // עדכון פרטי ההזמנה
-      const { error: orderError } = await supabase
+      const orderNumber = 'ORD-' + Date.now();
+      
+      const { data: orderData } = await supabase
+        .from('orders')
+        .insert([{
+          order_number: orderNumber,
+          customer_id: selectedCustomer,
+          delivery_date: deliveryDate,
+          status: 'חדשה',
+          notes: notes,
+          total_items: orderItems.reduce((sum, item) => sum + item.quantity, 0)
+        }])
+        .select()
+        .single();
+
+      const orderItemsData = orderItems.map(item => ({
+        order_id: orderData.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        notes: `${item.weight ? `משקל: ${item.weight} | ` : ''}${item.notes || ''}`
+      }));
+
+      await supabase
+        .from('order_items')
+        .insert(orderItemsData);
+
+      setMessage(`🎉 הזמנה ${orderNumber} נשלחה בהצלחה למחסן!`);
+      
+      // איפוס הטופס
+      setSelectedCustomer('');
+      setOrderItems([]);
+      setNotes('');
+      loadAllOrders();
+      
+      setTimeout(() => setMessage(''), 5000);
+      
+    } catch (err) {
+      setMessage('❌ שגיאה בשליחת ההזמנה');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateOrder = async (e) => {
+    e.preventDefault();
+    
+    if (!selectedCustomer || orderItems.length === 0) {
+      setMessage('❌ יש למלא את כל השדות הנדרשים');
+      return;
+    }
+
+    setLoading(true);
+    
+    try {
+      await supabase
         .from('orders')
         .update({
           customer_id: selectedCustomer,
@@ -321,17 +268,11 @@ export default function HomePage() {
         })
         .eq('id', editingOrder.id);
 
-      if (orderError) throw orderError;
-
-      // מחיקת פריטי ההזמנה הישנים
-      const { error: deleteError } = await supabase
+      await supabase
         .from('order_items')
         .delete()
         .eq('order_id', editingOrder.id);
 
-      if (deleteError) throw deleteError;
-
-      // הוספת פריטי ההזמנה החדשים
       const orderItemsData = orderItems.map(item => ({
         order_id: editingOrder.id,
         product_id: item.product_id,
@@ -339,24 +280,20 @@ export default function HomePage() {
         notes: `${item.weight ? `משקל: ${item.weight} | ` : ''}${item.notes || ''}`
       }));
 
-      const { error: itemsError } = await supabase
+      await supabase
         .from('order_items')
         .insert(orderItemsData);
 
-      if (itemsError) throw itemsError;
-
       setMessage(`✅ הזמנה ${editingOrder.order_number} עודכנה בהצלחה!`);
       
-      // איפוס מצב עריכה
       setEditingOrder(null);
       setSelectedCustomer('');
       setOrderItems([]);
       setNotes('');
       loadAllOrders();
       
-    } catch (error) {
-      console.error('Error updating order:', error);
-      setMessage('❌ שגיאה בעדכון ההזמנה: ' + error.message);
+    } catch (err) {
+      setMessage('❌ שגיאה בעדכון ההזמנה');
     } finally {
       setLoading(false);
     }
@@ -370,8 +307,16 @@ export default function HomePage() {
     setMessage('');
   };
 
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = !selectedCategory || product.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const categories = [...new Set(products.map(p => p.category))];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4">
       <div className="max-w-4xl mx-auto">
         
         <div className="text-center mb-8">
@@ -383,14 +328,14 @@ export default function HomePage() {
           <div className="mt-4 flex justify-center space-x-4 space-x-reverse">
             <button
               onClick={() => setShowOrdersList(!showOrdersList)}
-              className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+              className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors font-medium"
             >
               📋 הזמנות קיימות
             </button>
             
             <button
               onClick={() => window.open('/warehouse', '_blank')}
-              className="bg-purple-500 text-white px-6 py-2 rounded-lg hover:bg-purple-600 transition-colors"
+              className="bg-purple-500 text-white px-6 py-2 rounded-lg hover:bg-purple-600 transition-colors font-medium"
             >
               🏭 דשבורד מחסן
             </button>
@@ -398,7 +343,7 @@ export default function HomePage() {
             {editingOrder && (
               <button
                 onClick={cancelEdit}
-                className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors font-medium"
               >
                 ❌ בטל עריכה
               </button>
@@ -407,12 +352,12 @@ export default function HomePage() {
         </div>
 
         {message && (
-          <div className={`p-4 mb-6 rounded-lg border ${
+          <div className={`p-4 mb-6 rounded-lg border font-medium ${
             message.includes('🎉') || message.includes('✅') || message.includes('בהצלחה') 
-              ? 'bg-green-100 text-green-700 border-green-300' 
+              ? 'bg-green-100 text-green-800 border-green-300' 
               : message.includes('📝')
-              ? 'bg-blue-100 text-blue-700 border-blue-300'
-              : 'bg-red-100 text-red-700 border-red-300'
+              ? 'bg-blue-100 text-blue-800 border-blue-300'
+              : 'bg-red-100 text-red-800 border-red-300'
           }`}>
             {message}
           </div>
@@ -420,18 +365,18 @@ export default function HomePage() {
 
         {/* רשימת הזמנות קיימות */}
         {showOrdersList && (
-          <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-            <h3 className="font-bold text-gray-800 mb-4">הזמנות קיימות לעריכה</h3>
+          <div className="bg-white p-6 rounded-lg shadow-lg mb-6 border">
+            <h3 className="font-bold text-gray-800 mb-4 text-lg">הזמנות קיימות לעריכה</h3>
             <div className="max-h-96 overflow-y-auto space-y-3">
               {allOrders.length === 0 ? (
                 <p className="text-gray-500 text-center py-8">אין הזמנות להצגה</p>
               ) : (
                 allOrders.map(order => (
-                  <div key={order.id} className="flex justify-between items-center p-4 border rounded-lg hover:bg-gray-50">
+                  <div key={order.id} className="flex justify-between items-center p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 space-x-reverse">
-                        <span className="font-medium">#{order.order_number}</span>
-                        <span className={`px-2 py-1 rounded text-xs ${
+                        <span className="font-bold text-gray-800">#{order.order_number}</span>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                           order.status === 'חדשה' ? 'bg-blue-100 text-blue-800' :
                           order.status === 'בטיפול' ? 'bg-yellow-100 text-yellow-800' :
                           order.status === 'נשלחה' ? 'bg-purple-100 text-purple-800' :
@@ -441,17 +386,22 @@ export default function HomePage() {
                           {order.status}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600">
-                        {order.customers?.name} | 
+                      <p className="text-sm text-gray-600 mt-1">
+                        <strong>{order.customers?.name}</strong> | 
                         {new Date(order.delivery_date).toLocaleDateString('he-IL')} | 
                         {order.order_items?.length || 0} פריטים
                       </p>
                     </div>
                     <button
                       onClick={() => loadOrderForEdit(order)}
-                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+                      disabled={order.status !== 'חדשה'}
+                      className={`px-4 py-2 rounded font-medium transition-colors ${
+                        order.status === 'חדשה' 
+                          ? 'bg-blue-500 text-white hover:bg-blue-600' 
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
                     >
-                      ✏️ ערוך
+                      {order.status === 'חדשה' ? '✏️ ערוך' : '🔒 במחסן'}
                     </button>
                   </div>
                 ))
@@ -462,255 +412,219 @@ export default function HomePage() {
 
         <form onSubmit={editingOrder ? updateOrder : submitOrder} className="space-y-6">
           
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <label className="flex items-center text-lg font-medium mb-4 text-gray-700">
-                <User className="ml-2" size={20} />
-                בחירת לקוח *
-              </label>
-              
-              <div className="space-y-3">
-                <select
-                  value={selectedCustomer}
-                  onChange={(e) => setSelectedCustomer(e.target.value)}
-                  className="w-full p-4 border-2 rounded-lg text-lg focus:border-blue-500 focus:outline-none"
-                  required
-                >
-                  <option value="">🏪 בחר לקוח...</option>
-                  {customers.map(customer => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name} {customer.code ? `(${customer.code})` : ''}
-                    </option>
-                  ))}
-                </select>
-                
-                <button
-                  type="button"
-                  onClick={() => setShowAddCustomer(!showAddCustomer)}
-                  className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
-                >
-                  ➕ הוסף לקוח חדש
-                </button>
-              </div>
-
-              {/* טופס הוספת לקוח */}
-              {showAddCustomer && (
-                <div className="mt-4 p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
-                  <h4 className="font-bold text-gray-800 mb-3">פרטי לקוח חדש</h4>
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      placeholder="שם הלקוח *"
-                      value={newCustomer.name}
-                      onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})}
-                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                      required
-                    />
-                    <input
-                      type="text"
-                      placeholder="קוד לקוח (אופציונלי)"
-                      value={newCustomer.code}
-                      onChange={(e) => setNewCustomer({...newCustomer, code: e.target.value})}
-                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                    />
-                    <input
-                      type="text"
-                      placeholder="טלפון"
-                      value={newCustomer.phone}
-                      onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
-                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                    />
-                    <input
-                      type="text"
-                      placeholder="כתובת"
-                      value={newCustomer.address}
-                      onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})}
-                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                    />
-                    <input
-                      type="text"
-                      placeholder="איש קשר"
-                      value={newCustomer.contact_person}
-                      onChange={(e) => setNewCustomer({...newCustomer, contact_person: e.target.value})}
-                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                    />
-                    <div className="flex space-x-2 space-x-reverse">
-                      <button
-                        type="button"
-                        onClick={addNewCustomer}
-                        className="flex-1 bg-green-500 text-white py-2 rounded hover:bg-green-600 text-sm font-medium"
-                      >
-                        ✅ הוסף לקוח
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowAddCustomer(false);
-                          setNewCustomer({ name: '', code: '', phone: '', address: '', contact_person: '' });
-                        }}
-                        className="px-4 bg-gray-500 text-white py-2 rounded hover:bg-gray-600 text-sm font-medium"
-                      >
-                        ביטול
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <label className="flex items-center text-lg font-medium mb-4 text-gray-700">
-                <Calendar className="ml-2" size={20} />
-                תאריך אספקה *
-              </label>
-              <input
-                type="date"
-                value={deliveryDate}
-                onChange={(e) => setDeliveryDate(e.target.value)}
-                className="w-full p-4 border-2 rounded-lg text-lg focus:border-blue-500 focus:outline-none"
+          {/* בחירת לקוח */}
+          <div className="bg-white p-6 rounded-lg shadow-lg border">
+            <h3 className="font-bold text-gray-800 mb-4 text-lg">🏪 בחירת לקוח</h3>
+            <div className="space-y-4">
+              <select
+                value={selectedCustomer}
+                onChange={(e) => setSelectedCustomer(e.target.value)}
+                className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
                 required
-              />
+              >
+                <option value="" className="text-gray-500">בחר לקוח...</option>
+                {customers.map(customer => (
+                  <option key={customer.id} value={customer.id} className="text-gray-800">
+                    {customer.name} {customer.code ? `(${customer.code})` : ''}
+                  </option>
+                ))}
+              </select>
+              
+              <button
+                type="button"
+                onClick={() => setShowAddCustomer(!showAddCustomer)}
+                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors font-medium"
+              >
+                ➕ הוסף לקוח חדש
+              </button>
             </div>
+
+            {/* הוספת לקוח חדש */}
+            {showAddCustomer && (
+              <div className="mt-6 p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
+                <h4 className="font-bold text-gray-800 mb-3">הוספת לקוח חדש</h4>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <input
+                    type="text"
+                    placeholder="שם הלקוח *"
+                    value={newCustomer.name}
+                    onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})}
+                    className="border-2 border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
+                    required
+                  />
+                  <input
+                    type="text"
+                    placeholder="קוד לקוח (אופציונלי)"
+                    value={newCustomer.code}
+                    onChange={(e) => setNewCustomer({...newCustomer, code: e.target.value})}
+                    className="border-2 border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
+                  />
+                  <input
+                    type="text"
+                    placeholder="טלפון"
+                    value={newCustomer.phone}
+                    onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
+                    className="border-2 border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
+                  />
+                  <input
+                    type="text"
+                    placeholder="כתובת"
+                    value={newCustomer.address}
+                    onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})}
+                    className="border-2 border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
+                  />
+                </div>
+                <div className="mt-4 flex space-x-2 space-x-reverse">
+                  <button
+                    type="button"
+                    onClick={addNewCustomer}
+                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors font-medium"
+                  >
+                    💾 שמור לקוח
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddCustomer(false)}
+                    className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors font-medium"
+                  >
+                    ביטול
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <label className="flex items-center text-lg font-medium mb-4 text-gray-700">
-              <Search className="ml-2" size={20} />
-              חיפוש וסינון מוצרים
-            </label>
+          {/* תאריך אספקה */}
+          <div className="bg-white p-6 rounded-lg shadow-lg border">
+            <h3 className="font-bold text-gray-800 mb-4 text-lg">📅 תאריך אספקה</h3>
+            <input
+              type="date"
+              value={deliveryDate}
+              onChange={(e) => setDeliveryDate(e.target.value)}
+              className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
+              required
+            />
+          </div>
+
+          {/* חיפוש וסינון מוצרים */}
+          <div className="bg-white p-6 rounded-lg shadow-lg border">
+            <h3 className="font-bold text-gray-800 mb-4 text-lg">🔍 חיפוש וסינון מוצרים</h3>
             
             <div className="grid md:grid-cols-2 gap-4 mb-4">
-              <input
-                type="text"
-                placeholder="🔍 חפש מוצר לפי שם או קטגוריה..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full p-3 border-2 rounded-lg text-lg focus:border-blue-500 focus:outline-none"
-              />
+              <div className="relative">
+                <Search className="absolute right-3 top-3 text-gray-400" size={20} />
+                <input
+                  type="text"
+                  placeholder="חפש מוצר לפי שם..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-12 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
+                />
+              </div>
               
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full p-3 border-2 rounded-lg text-lg focus:border-blue-500 focus:outline-none"
+                className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
               >
-                <option value="">🍖 כל הקטגוריות</option>
+                <option value="" className="text-gray-500">כל הקטגוריות</option>
                 {categories.map(category => (
-                  <option key={category} value={category}>{category}</option>
+                  <option key={category} value={category} className="text-gray-800">{category}</option>
                 ))}
               </select>
             </div>
 
-            <div className="max-h-80 overflow-y-auto border rounded-lg">
-              {filteredProducts.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  לא נמצאו מוצרים בחיפוש זה
-                </div>
-              ) : (
-                <div className="space-y-2 p-4">
-                  {filteredProducts.map(product => (
-                    <div key={product.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="flex-1">
-                        <span className="font-medium text-gray-800">{product.name}</span>
-                        <div className="text-sm text-gray-500">
-                          <span className="bg-blue-100 px-2 py-1 rounded mr-2">{product.category}</span>
-                          <span className="text-gray-600">{product.unit || 'יחידה'}</span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => addToOrder(product)}
-                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center"
-                      >
-                        <Plus size={16} className="ml-1" />
-                        הוסף
-                      </button>
+            <div className="max-h-96 overflow-y-auto grid gap-2">
+              {filteredProducts.map(product => (
+                <div key={product.id} className="flex justify-between items-center p-3 border rounded-lg hover:bg-blue-50 transition-colors">
+                  <div className="flex-1">
+                    <span className="font-medium text-gray-800">{product.name}</span>
+                    <div className="text-sm text-gray-600">
+                      <span className="bg-blue-100 px-2 py-1 rounded mr-2 text-blue-800 font-medium">{product.category}</span>
+                      <span className="text-gray-700">{product.unit || 'יחידה'}</span>
                     </div>
-                  ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => addProduct(product)}
+                    className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition-colors font-medium"
+                  >
+                    ➕ הוסף
+                  </button>
                 </div>
-              )}
+              ))}
             </div>
           </div>
 
+          {/* פריטי הזמנה */}
           {orderItems.length > 0 && (
-            <div className="bg-white p-6 rounded-lg shadow-md border-2 border-green-200">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="flex items-center text-xl font-bold text-gray-800">
-                  <ShoppingCart className="ml-2" size={24} />
-                  סיכום הזמנה ({getTotalItems()} יחידות, {orderItems.length} פריטים)
-                </h3>
-                <button
-                  type="button"
-                  onClick={clearOrder}
-                  className="text-red-500 hover:text-red-700 text-sm font-medium"
-                >
-                  נקה הזמנה
-                </button>
-              </div>
-              
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {orderItems.map(item => (
-                  <div key={item.product_id} className="p-4 bg-gray-50 rounded-lg border">
+            <div className="bg-white p-6 rounded-lg shadow-lg border">
+              <h3 className="font-bold text-gray-800 mb-4 text-lg">🛒 פריטי ההזמנה ({orderItems.length})</h3>
+              <div className="space-y-4">
+                {orderItems.map((item, index) => (
+                  <div key={index} className="p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
-                        <div className="font-medium text-gray-800">{item.product_name}</div>
-                        <div className="text-sm text-gray-500">{item.category}</div>
+                        <div className="font-bold text-gray-800">{item.product_name}</div>
+                        <div className="text-sm text-blue-600 font-medium">{item.category}</div>
                       </div>
                       <button
                         type="button"
-                        onClick={() => updateQuantity(item.product_id, 0)}
-                        className="text-red-500 hover:text-red-700 text-sm"
+                        onClick={() => updateQuantity(index, 0)}
+                        className="text-red-500 hover:text-red-700 font-medium"
                       >
-                        ✖ הסר
+                        <Trash2 size={18} />
                       </button>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">כמות</label>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">כמות</label>
                         <div className="flex items-center space-x-2 space-x-reverse">
                           <button
                             type="button"
-                            onClick={() => updateQuantity(item.product_id, item.quantity - 1)}
-                            className="w-8 h-8 bg-red-500 text-white rounded-full hover:bg-red-600 flex items-center justify-center"
+                            onClick={() => updateQuantity(index, item.quantity - 1)}
+                            className="w-8 h-8 bg-red-500 text-white rounded-full hover:bg-red-600 flex items-center justify-center font-bold"
                           >
                             <Minus size={16} />
                           </button>
                           <input
                             type="number"
                             value={item.quantity}
-                            onChange={(e) => updateQuantity(item.product_id, parseInt(e.target.value) || 0)}
-                            className="w-16 text-center border rounded px-2 py-1"
+                            onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 0)}
+                            className="w-16 text-center border-2 border-gray-300 rounded px-2 py-1 text-gray-800 bg-white font-bold"
                             min="1"
                           />
                           <button
                             type="button"
-                            onClick={() => updateQuantity(item.product_id, item.quantity + 1)}
-                            className="w-8 h-8 bg-green-500 text-white rounded-full hover:bg-green-600 flex items-center justify-center"
+                            onClick={() => updateQuantity(index, item.quantity + 1)}
+                            className="w-8 h-8 bg-green-500 text-white rounded-full hover:bg-green-600 flex items-center justify-center font-bold"
                           >
                             <Plus size={16} />
                           </button>
+                          <span className="text-sm text-gray-600 mr-2 font-medium">{item.unit}</span>
                         </div>
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">משקל</label>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">משקל (אופציונלי)</label>
                         <input
                           type="text"
                           value={item.weight || ''}
-                          onChange={(e) => updateItemField(item.product_id, 'weight', e.target.value)}
+                          onChange={(e) => updateItemField(index, 'weight', e.target.value)}
                           placeholder="כמה ק״ג?"
-                          className="w-full border rounded px-3 py-1 text-sm focus:border-blue-500 focus:outline-none"
+                          className="w-full border-2 border-gray-300 rounded px-3 py-1 text-sm focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
                         />
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">הערות</label>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">הערות (אופציונלי)</label>
                         <input
                           type="text"
                           value={item.notes || ''}
-                          onChange={(e) => updateItemField(item.product_id, 'notes', e.target.value)}
+                          onChange={(e) => updateItemField(index, 'notes', e.target.value)}
                           placeholder="הערות למוצר..."
-                          className="w-full border rounded px-3 py-1 text-sm focus:border-blue-500 focus:outline-none"
+                          className="w-full border-2 border-gray-300 rounded px-3 py-1 text-sm focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
                         />
                       </div>
                     </div>
@@ -720,21 +634,20 @@ export default function HomePage() {
             </div>
           )}
 
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <label className="flex items-center text-lg font-medium mb-4 text-gray-700">
-              <Package className="ml-2" size={20} />
-              הערות נוספות
-            </label>
+          {/* הערות נוספות */}
+          <div className="bg-white p-6 rounded-lg shadow-lg border">
+            <h3 className="font-bold text-gray-800 mb-4 text-lg">📝 הערות נוספות</h3>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="💬 הערות מיוחדות להזמנה..."
-              className="w-full p-4 border-2 rounded-lg text-lg focus:border-blue-500 focus:outline-none resize-none"
-              rows="3"
+              placeholder="הערות כלליות להזמנה..."
+              className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
+              rows="4"
             />
           </div>
 
-          <div className="sticky bottom-0 bg-white p-6 rounded-lg shadow-lg border-t-4 border-green-400">
+          {/* כפתור שליחה */}
+          <div className="bg-white p-6 rounded-lg shadow-lg border">
             <div className="flex space-x-4 space-x-reverse">
               <button
                 type="submit"
@@ -742,14 +655,6 @@ export default function HomePage() {
                 className="flex-1 bg-green-500 text-white py-4 rounded-lg text-xl font-bold hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? '⏳ מעדכן...' : editingOrder ? '💾 עדכן הזמנה' : '🚀 שליחת הזמנה'}
-              </button>
-              
-              <button
-                type="button"
-                onClick={clearOrder}
-                className="px-6 bg-gray-500 text-white py-4 rounded-lg text-lg font-medium hover:bg-gray-600 transition-colors"
-              >
-                🗑️ נקה
               </button>
             </div>
           </div>
