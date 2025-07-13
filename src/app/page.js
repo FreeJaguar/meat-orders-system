@@ -1,24 +1,297 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Search, Plus, Minus, Trash2, Package, Edit3 } from 'lucide-react';
-import LoginSystem from '../components/LoginSystem';
-import OrderForm from './OrderForm'; // העבר את הקוד לקומפוננטה נפרדת
-
-export default function Page() {
-  return (
-    <LoginSystem requiredRole="field_agent">
-      <OrderForm />
-    </LoginSystem>
-  );
-}
+import { Search, Plus, Minus, Trash2, Package, Shield, Lock, Users, Eye, EyeOff } from 'lucide-react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-export default function OrderForm() {
+// קומפוננטת מערכת הרשאות
+function LoginSystem({ children, requiredRole = null }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState(null);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [password, setPassword] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const passwords = {
+    admin: '1234567890',
+    field_agent: '123456',
+    warehouse: 'מחסן123'
+  };
+
+  useEffect(() => {
+    const savedRole = localStorage.getItem('userRole');
+    const loginTime = localStorage.getItem('loginTime');
+    
+    if (savedRole && loginTime) {
+      const hoursSinceLogin = (Date.now() - parseInt(loginTime)) / (1000 * 60 * 60);
+      if (hoursSinceLogin < 24) {
+        setUserRole(savedRole);
+        setIsAuthenticated(true);
+      } else {
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('loginTime');
+      }
+    }
+  }, []);
+
+  const login = (role) => {
+    setLoading(true);
+    setError('');
+    
+    setTimeout(() => {
+      if (passwords[role] && password === passwords[role]) {
+        setUserRole(role);
+        setIsAuthenticated(true);
+        setShowLogin(false);
+        setPassword('');
+        
+        localStorage.setItem('userRole', role);
+        localStorage.setItem('loginTime', Date.now().toString());
+        
+      } else {
+        setError('סיסמה שגויה!');
+      }
+      setLoading(false);
+    }, 500);
+  };
+
+  const logout = () => {
+    setIsAuthenticated(false);
+    setUserRole(null);
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('loginTime');
+  };
+
+  const openAdminPanel = () => {
+    setAdminPassword('');
+    setShowAdminPanel(true);
+    setError('');
+  };
+
+  const accessAdminPanel = () => {
+    if (adminPassword === passwords.admin) {
+      setError('');
+      alert('ברוך הבא לפאנל האדמין!\n\nסיסמאות נוכחיות:\n• אדמין: 1234567890\n• סוכן שטח: 123456\n• מחסן: מחסן123');
+      setShowAdminPanel(false);
+      setAdminPassword('');
+    } else {
+      setError('סיסמת אדמין שגויה!');
+    }
+  };
+
+  const hasAccess = () => {
+    if (!requiredRole) return true;
+    if (userRole === 'admin') return true;
+    return userRole === requiredRole;
+  };
+
+  const getRoleName = (role) => {
+    switch (role) {
+      case 'admin': return 'מנהל מערכת';
+      case 'field_agent': return 'סוכן שטח';
+      case 'warehouse': return 'מחסנאי';
+      default: return 'לא מחובר';
+    }
+  };
+
+  if (!isAuthenticated || !hasAccess()) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          
+          <div className="text-center mb-8">
+            <Shield size={64} className="mx-auto text-blue-500 mb-4" />
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">
+              🥩 מערכת הזמנות בשר
+            </h1>
+            <p className="text-gray-600">
+              {!isAuthenticated ? 'התחברות למערכת' : 'אין לך הרשאה לגשת לדף זה'}
+            </p>
+          </div>
+
+          {error && (
+            <div className="bg-red-100 border-2 border-red-300 text-red-800 px-4 py-3 rounded-lg mb-6 font-medium">
+              {error}
+            </div>
+          )}
+
+          {!showLogin ? (
+            <div className="bg-white p-6 rounded-lg shadow-lg border-2 border-gray-200">
+              <h3 className="font-bold text-gray-800 mb-4 text-lg text-center">בחר את התפקיד שלך</h3>
+              
+              <div className="space-y-3">
+                <button
+                  onClick={() => setShowLogin('field_agent')}
+                  className="w-full bg-blue-500 text-white p-4 rounded-lg hover:bg-blue-600 transition-colors font-bold flex items-center justify-center"
+                >
+                  <Users size={20} className="ml-2" />
+                  סוכן שטח
+                </button>
+                
+                <button
+                  onClick={() => setShowLogin('warehouse')}
+                  className="w-full bg-purple-500 text-white p-4 rounded-lg hover:bg-purple-600 transition-colors font-bold flex items-center justify-center"
+                >
+                  <Package size={20} className="ml-2" />
+                  מחסנאי
+                </button>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <button
+                  onClick={openAdminPanel}
+                  className="w-full bg-gray-500 text-white p-2 rounded-lg hover:bg-gray-600 transition-colors font-medium text-sm flex items-center justify-center"
+                >
+                  <Lock size={16} className="ml-1" />
+                  פאנל אדמין
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white p-6 rounded-lg shadow-lg border-2 border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-gray-800 text-lg">
+                  התחברות - {getRoleName(showLogin)}
+                </h3>
+                <button
+                  onClick={() => setShowLogin(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">סיסמה</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="הכנס סיסמה..."
+                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none text-gray-800 font-medium"
+                      onKeyPress={(e) => e.key === 'Enter' && login(showLogin)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute left-3 top-3 text-gray-500 hover:text-gray-700"
+                    >
+                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => login(showLogin)}
+                  disabled={loading || !password}
+                  className="w-full bg-green-500 text-white p-3 rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-bold"
+                >
+                  {loading ? '⏳ מתחבר...' : '🔓 התחבר'}
+                </button>
+              </div>
+
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                <strong>לצורך בדיקה:</strong><br />
+                סוכן שטח: 123456<br />
+                מחסנאי: מחסן123
+              </div>
+            </div>
+          )}
+
+          {showAdminPanel && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full border-2 border-gray-300">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-gray-800 text-lg">פאנל אדמין</h3>
+                  <button
+                    onClick={() => setShowAdminPanel(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    ✕
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">סיסמת אדמין</label>
+                    <input
+                      type="password"
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      placeholder="הכנס סיסמת אדמין..."
+                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none text-gray-800 font-medium"
+                      onKeyPress={(e) => e.key === 'Enter' && accessAdminPanel()}
+                    />
+                  </div>
+                  
+                  <button
+                    onClick={accessAdminPanel}
+                    disabled={!adminPassword}
+                    className="w-full bg-red-500 text-white p-3 rounded-lg hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-bold"
+                  >
+                    🔧 גישה לפאנל
+                  </button>
+                </div>
+
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-xs text-red-800">
+                  <strong>לצורך בדיקה:</strong> 1234567890
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="bg-white shadow-md border-b-2 border-gray-200 p-4">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="flex items-center space-x-3 space-x-reverse">
+            <Shield size={24} className="text-green-500" />
+            <span className="font-bold text-gray-800">
+              מחובר כ: {getRoleName(userRole)}
+            </span>
+          </div>
+          
+          <div className="flex items-center space-x-3 space-x-reverse">
+            {userRole === 'admin' && (
+              <button
+                onClick={openAdminPanel}
+                className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors font-bold text-sm"
+              >
+                ⚙️ פאנל אדמין
+              </button>
+            )}
+            
+            <button
+              onClick={logout}
+              className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors font-bold"
+            >
+              🚪 התנתק
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {children}
+    </div>
+  );
+}
+
+// קומפוננטת טופס ההזמנות
+function OrderForm() {
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState('');
@@ -45,7 +318,6 @@ export default function OrderForm() {
     loadCustomers();
     loadProducts();
     loadAllOrders();
-    // הגדרת תאריך ברירת מחדל למחר
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     setDeliveryDate(tomorrow.toISOString().split('T')[0]);
@@ -58,7 +330,7 @@ export default function OrderForm() {
         .select('*')
         .order('name');
       setCustomers(data || []);
-    } catch (err) {
+    } catch {
       console.log('Error loading customers');
     }
   };
@@ -71,7 +343,7 @@ export default function OrderForm() {
         .eq('is_active', true)
         .order('category, name');
       setProducts(data || []);
-    } catch (err) {
+    } catch {
       console.log('Error loading products');
     }
   };
@@ -91,7 +363,7 @@ export default function OrderForm() {
         .order('created_at', { ascending: false });
 
       setAllOrders(data || []);
-    } catch (err) {
+    } catch {
       console.log('Error loading orders');
     }
   };
@@ -121,13 +393,12 @@ export default function OrderForm() {
       setShowAddCustomer(false);
       setMessage(`✅ לקוח ${data.name} נוסף בהצלחה ונבחר!`);
       
-    } catch (err) {
+    } catch {
       setMessage('❌ שגיאה בהוספת הלקוח');
     }
   };
 
   const loadOrderForEdit = (order) => {
-    // בדיקה אם ההזמנה בטיפול במחסן
     if (order.status === 'בטיפול' || order.status === 'נשלחה' || order.status === 'הושלמה') {
       setMessage('❌ לא ניתן לערוך הזמנה שכבר בטיפול במחסן');
       return;
@@ -232,7 +503,6 @@ export default function OrderForm() {
 
       setMessage(`🎉 הזמנה ${orderNumber} נשלחה בהצלחה למחסן!`);
       
-      // איפוס הטופס
       setSelectedCustomer('');
       setOrderItems([]);
       setNotes('');
@@ -240,7 +510,7 @@ export default function OrderForm() {
       
       setTimeout(() => setMessage(''), 5000);
       
-    } catch (err) {
+    } catch {
       setMessage('❌ שגיאה בשליחת ההזמנה');
     } finally {
       setLoading(false);
@@ -292,7 +562,7 @@ export default function OrderForm() {
       setNotes('');
       loadAllOrders();
       
-    } catch (err) {
+    } catch {
       setMessage('❌ שגיאה בעדכון ההזמנה');
     } finally {
       setLoading(false);
@@ -363,7 +633,6 @@ export default function OrderForm() {
           </div>
         )}
 
-        {/* רשימת הזמנות קיימות */}
         {showOrdersList && (
           <div className="bg-white p-6 rounded-lg shadow-lg mb-6 border">
             <h3 className="font-bold text-gray-800 mb-4 text-lg">הזמנות קיימות לעריכה</h3>
@@ -439,7 +708,6 @@ export default function OrderForm() {
               </button>
             </div>
 
-            {/* הוספת לקוח חדש */}
             {showAddCustomer && (
               <div className="mt-6 p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
                 <h4 className="font-bold text-gray-800 mb-3">הוספת לקוח חדש</h4>
@@ -661,5 +929,14 @@ export default function OrderForm() {
         </form>
       </div>
     </div>
+  );
+}
+
+// הקומפוננטה הראשית
+export default function Page() {
+  return (
+    <LoginSystem requiredRole="field_agent">
+      <OrderForm />
+    </LoginSystem>
   );
 }
