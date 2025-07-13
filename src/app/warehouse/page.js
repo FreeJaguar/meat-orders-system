@@ -60,8 +60,8 @@ export default function WarehouseDashboard() {
         .order('category, name');
 
       setAllProducts(data || []);
-    } catch (error) {
-      console.error('Error loading products:', error);
+    } catch {
+      console.error('Error loading products:');
     }
   };
 
