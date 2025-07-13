@@ -716,7 +716,7 @@ function OrderForm() {
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
               >
-                <option value="" className="text-gray-500<option value="" className="text-gray-500">כל הקטגוריות</option>
+                <option value="" className="text-gray-500">כל הקטגוריות</option>
                {categories.map(category => (
                  <option key={category} value={category} className="text-gray-800">{category}</option>
                ))}
