@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { Package, Eye, Edit, Plus, Minus, Download, Printer } from 'lucide-react';
 
-
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -22,16 +21,16 @@ export default function WarehouseDashboard() {
   const [allProducts, setAllProducts] = useState([]);
 
   useEffect(() => {
-  loadOrders();
-  loadProducts();
-  const cleanup = setupRealtimeSubscription();
-  return cleanup;
-}, []); // eslint-disable-line react-hooks/exhaustive-deps
+    loadOrders();
+    loadProducts();
+    const cleanup = setupRealtimeSubscription();
+    return cleanup;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadOrders = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('orders')
         .select(`
           *,
@@ -43,7 +42,6 @@ export default function WarehouseDashboard() {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
       setOrders(data || []);
       
     } catch (error) {
@@ -55,13 +53,12 @@ export default function WarehouseDashboard() {
 
   const loadProducts = async () => {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('products')
         .select('*')
         .eq('is_active', true)
         .order('category, name');
 
-      if (error) throw error;
       setAllProducts(data || []);
     } catch (error) {
       console.error('Error loading products:', error);
@@ -87,9 +84,7 @@ export default function WarehouseDashboard() {
         
         loadOrders();
       })
-      .subscribe((status) => {
-        console.log('Realtime subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
@@ -155,12 +150,10 @@ export default function WarehouseDashboard() {
 
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
-      const { error: _orderError } = await supabase
+      await supabase
         .from('orders')
         .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq('id', orderId);
-
-      if (error) throw error;
       
       loadOrders();
       setShowOrderDetails(false);
@@ -367,7 +360,7 @@ export default function WarehouseDashboard() {
     return '\uFEFF' + [headers.join(','), ...rows].join('\n');
   };
 
-  // פונקציות עריכה (כפי שהיו)
+  // פונקציות עריכה
   const startEditOrder = (order) => {
     setEditingOrder(order);
     setEditDeliveryDate(order.delivery_date);
@@ -433,7 +426,7 @@ export default function WarehouseDashboard() {
     if (!editingOrder) return;
     
     try {
-      const { error: orderError } = await supabase
+      await supabase
         .from('orders')
         .update({
           delivery_date: editDeliveryDate,
@@ -442,14 +435,10 @@ export default function WarehouseDashboard() {
         })
         .eq('id', editingOrder.id);
 
-      if (orderError) throw orderError;
-
-      const { error: deleteError } = await supabase
+      await supabase
         .from('order_items')
         .delete()
         .eq('order_id', editingOrder.id);
-
-      if (deleteError) throw deleteError;
 
       const orderItemsData = editOrderItems.map(item => ({
         order_id: editingOrder.id,
@@ -458,11 +447,11 @@ export default function WarehouseDashboard() {
         notes: `${item.weight ? `משקל: ${item.weight} | ` : ''}${item.notes || ''}`
       }));
 
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItemsData);
-
-      if (itemsError) throw itemsError;
+      if (orderItemsData.length > 0) {
+        await supabase
+          .from('order_items')
+          .insert(orderItemsData);
+      }
 
       setEditingOrder(null);
       setEditOrderItems([]);
