@@ -22,10 +22,11 @@ export default function WarehouseDashboard() {
   const [allProducts, setAllProducts] = useState([]);
 
   useEffect(() => {
-    loadOrders();
-    loadProducts();
-    setupRealtimeSubscription();
-  }, []);
+  loadOrders();
+  loadProducts();
+  const cleanup = setupRealtimeSubscription();
+  return cleanup;
+}, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadOrders = async () => {
     setLoading(true);
@@ -154,7 +155,7 @@ export default function WarehouseDashboard() {
 
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
-      const { error } = await supabase
+      const { error: orderError } = await supabase
         .from('orders')
         .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq('id', orderId);
