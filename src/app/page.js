@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Search, Plus, Minus, Trash2, Package, Shield, Lock, Users, Eye, EyeOff } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, Package, Shield, Users, Eye, EyeOff } from 'lucide-react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
