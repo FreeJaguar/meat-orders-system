@@ -666,7 +666,7 @@ function WarehouseDashboard() {
                         </div>
                         <div className="space-y-1">
                           <p className="text-gray-800"><span className="font-bold text-gray-900">תאריך אספקה:</span> {new Date(order.delivery_date).toLocaleDateString('he-IL')}</p>
-                          <p className="text-gray-800"><span className="font-bold text-gray-900">נוצרה:</span> {new Date(order.created_at).toLocaleDateString('he-IL')
+                          <p className="text-gray-800"><span className="font-bold text-gray-900">נוצרה:</span> {new Date(order.created_at).toLocaleDateString('he-IL')}</p>
                         </div>
                      </div>
                      
