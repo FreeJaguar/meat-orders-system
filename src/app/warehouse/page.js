@@ -155,7 +155,7 @@ export default function WarehouseDashboard() {
 
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
-      const { error: orderError } = await supabase
+      const { error: _orderError } = await supabase
         .from('orders')
         .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq('id', orderId);
