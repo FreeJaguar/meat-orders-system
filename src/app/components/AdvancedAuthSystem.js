@@ -82,7 +82,7 @@ export default function AdvancedAuthSystem({ children, requiredRole = null }) {
       localStorage.setItem('currentUser', JSON.stringify(users));
       localStorage.setItem('loginTime', Date.now().toString());
       
-    } catch (err) {
+    } catch {
       setError('שגיאה בהתחברות למערכת');
     } finally {
       setLoading(false);
@@ -106,7 +106,7 @@ export default function AdvancedAuthSystem({ children, requiredRole = null }) {
 
       if (error) throw error;
       setAllUsers(data || []);
-    } catch (err) {
+    } catch {
       setError('שגיאה בטעינת רשימת המשתמשים');
     }
   };
@@ -189,7 +189,7 @@ export default function AdvancedAuthSystem({ children, requiredRole = null }) {
       setEditingUser(null);
       await loadAllUsers();
       
-    } catch (err) {
+    } catch {
       setError('שגיאה בשמירת המשתמש: ' + err.message);
     } finally {
       setLoading(false);
@@ -208,7 +208,7 @@ export default function AdvancedAuthSystem({ children, requiredRole = null }) {
       if (error) throw error;
       await loadAllUsers();
       
-    } catch (err) {
+    } catch {
       setError('שגיאה במחיקת המשתמש');
     }
   };
