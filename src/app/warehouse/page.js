@@ -712,7 +712,6 @@ function WarehouseDashboard() {
           <div className="mt-4">
             <button
               onClick={() => window.open('/', '_blank')}
-              className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-colors font
               className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-colors font-bold"
             >
               🏪 חזרה לטופס הזמנות
