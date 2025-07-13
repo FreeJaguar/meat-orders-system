@@ -44,8 +44,8 @@ export default function WarehouseDashboard() {
 
       setOrders(data || []);
       
-    } catch (error) {
-      console.error('Error loading orders:', error);
+    } catch (err) {
+      console.error('Error loading orders:', err);
     } finally {
       setLoading(false);
     }
@@ -60,8 +60,8 @@ export default function WarehouseDashboard() {
         .order('category, name');
 
       setAllProducts(data || []);
-    } catch {
-      console.error('Error loading products:');
+    } catch (err) {
+      console.error('Error loading products:', err);
     }
   };
 
@@ -143,7 +143,7 @@ export default function WarehouseDashboard() {
       
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + 0.5);
-    } catch (error) {
+    } catch (err) {
       console.log('Sound not supported');
     }
   };
@@ -159,8 +159,8 @@ export default function WarehouseDashboard() {
       setShowOrderDetails(false);
       alert(`✅ סטטוס ההזמנה עודכן ל-${newStatus}`);
       
-    } catch (error) {
-      console.error('Error updating order status:', error);
+    } catch (err) {
+      console.error('Error updating order status:', err);
       alert('שגיאה בעדכון סטטוס ההזמנה');
     }
   };
@@ -461,9 +461,9 @@ export default function WarehouseDashboard() {
       
       alert(`✅ הזמנה ${editingOrder.order_number} עודכנה בהצלחה!`);
       
-    } catch (error) {
-      console.error('Error updating order:', error);
-      alert('❌ שגיאה בעדכון ההזמנה: ' + error.message);
+    } catch (err) {
+      console.error('Error updating order:', err);
+      alert('❌ שגיאה בעדכון ההזמנה: ' + err.message);
     }
   };
 
