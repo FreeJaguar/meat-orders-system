@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Search, Plus, Minus, Trash2, Package, Edit3 } from 'lucide-react';
+import { Search, Plus, Minus, Trash2 } from 'lucide-react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -48,7 +48,7 @@ export default function OrderForm() {
         .select('*')
         .order('name');
       setCustomers(data || []);
-    } catch (err) {
+    } catch {
       console.log('Error loading customers');
     }
   };
@@ -61,7 +61,7 @@ export default function OrderForm() {
         .eq('is_active', true)
         .order('category, name');
       setProducts(data || []);
-    } catch (err) {
+    } catch {
       console.log('Error loading products');
     }
   };
@@ -81,7 +81,7 @@ export default function OrderForm() {
         .order('created_at', { ascending: false });
 
       setAllOrders(data || []);
-    } catch (err) {
+    } catch {
       console.log('Error loading orders');
     }
   };
@@ -111,7 +111,7 @@ export default function OrderForm() {
       setShowAddCustomer(false);
       setMessage(`✅ לקוח ${data.name} נוסף בהצלחה ונבחר!`);
       
-    } catch (err) {
+    } catch {
       setMessage('❌ שגיאה בהוספת הלקוח');
     }
   };
@@ -230,7 +230,7 @@ export default function OrderForm() {
       
       setTimeout(() => setMessage(''), 5000);
       
-    } catch (err) {
+    } catch {
       setMessage('❌ שגיאה בשליחת ההזמנה');
     } finally {
       setLoading(false);
@@ -282,7 +282,7 @@ export default function OrderForm() {
       setNotes('');
       loadAllOrders();
       
-    } catch (err) {
+    } catch {
       setMessage('❌ שגיאה בעדכון ההזמנה');
     } finally {
       setLoading(false);

@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Package, Eye, Edit, Plus, Minus, Download, Printer } from 'lucide-react';
+import { Package, Eye, Download, Printer } from 'lucide-react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -16,9 +16,10 @@ export default function WarehouseDashboard() {
   const [showOrderDetails, setShowOrderDetails] = useState(false);
 
   useEffect(() => {
-    loadOrders();
-    setupRealtimeSubscription();
-  }, []);
+  loadOrders();
+  const cleanup = setupRealtimeSubscription();
+  return cleanup;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadOrders = async () => {
     setLoading(true);
