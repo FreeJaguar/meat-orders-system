@@ -1,217 +1,14 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Search, Plus, Minus, Trash2, Package, Shield, Users, Eye, EyeOff } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, Package, Edit3 } from 'lucide-react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-// מערכת הרשאות פשוטה (הקוד הקודם שעבד)
-function LoginSystem({ children, requiredRole = null }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState(null);
-  const [showLogin, setShowLogin] = useState(false);
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const passwords = {
-    admin: '1234567890',
-    field_agent: '123456',
-    warehouse: 'מחסן123'
-  };
-
-  useEffect(() => {
-    const savedRole = localStorage.getItem('userRole');
-    const loginTime = localStorage.getItem('loginTime');
-    
-    if (savedRole && loginTime) {
-      const hoursSinceLogin = (Date.now() - parseInt(loginTime)) / (1000 * 60 * 60);
-      if (hoursSinceLogin < 24) {
-        setUserRole(savedRole);
-        setIsAuthenticated(true);
-      } else {
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('loginTime');
-      }
-    }
-  }, []);
-
-  const login = (role) => {
-    setLoading(true);
-    setError('');
-    
-    setTimeout(() => {
-      if (passwords[role] && password === passwords[role]) {
-        setUserRole(role);
-        setIsAuthenticated(true);
-        setShowLogin(false);
-        setPassword('');
-        
-        localStorage.setItem('userRole', role);
-        localStorage.setItem('loginTime', Date.now().toString());
-        
-      } else {
-        setError('סיסמה שגויה!');
-      }
-      setLoading(false);
-    }, 500);
-  };
-
-  const logout = () => {
-    setIsAuthenticated(false);
-    setUserRole(null);
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('loginTime');
-  };
-
-  const hasAccess = () => {
-    if (!requiredRole) return true;
-    if (userRole === 'admin') return true;
-    return userRole === requiredRole;
-  };
-
-  const getRoleName = (role) => {
-    switch (role) {
-      case 'admin': return 'מנהל מערכת';
-      case 'field_agent': return 'סוכן שטח';
-      case 'warehouse': return 'מחסנאי';
-      default: return 'לא מחובר';
-    }
-  };
-
-  if (!isAuthenticated || !hasAccess()) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full">
-          
-          <div className="text-center mb-8">
-            <Shield size={64} className="mx-auto text-blue-500 mb-4" />
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">
-              🥩 מערכת הזמנות בשר
-            </h1>
-            <p className="text-gray-600">
-              {!isAuthenticated ? 'התחברות למערכת' : 'אין לך הרשאה לגשת לדף זה'}
-            </p>
-          </div>
-
-          {error && (
-            <div className="bg-red-100 border-2 border-red-300 text-red-800 px-4 py-3 rounded-lg mb-6 font-medium">
-              {error}
-            </div>
-          )}
-
-          {!showLogin ? (
-            <div className="bg-white p-6 rounded-lg shadow-lg border-2 border-gray-200">
-              <h3 className="font-bold text-gray-800 mb-4 text-lg text-center">בחר את התפקיד שלך</h3>
-              
-              <div className="space-y-3">
-                <button
-                  onClick={() => setShowLogin('field_agent')}
-                  className="w-full bg-blue-500 text-white p-4 rounded-lg hover:bg-blue-600 transition-colors font-bold flex items-center justify-center"
-                >
-                  <Users size={20} className="ml-2" />
-                  סוכן שטח
-                </button>
-                
-                <button
-                  onClick={() => setShowLogin('warehouse')}
-                  className="w-full bg-purple-500 text-white p-4 rounded-lg hover:bg-purple-600 transition-colors font-bold flex items-center justify-center"
-                >
-                  <Package size={20} className="ml-2" />
-                  מחסנאי
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white p-6 rounded-lg shadow-lg border-2 border-gray-200">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-800 text-lg">
-                  התחברות - {getRoleName(showLogin)}
-                </h3>
-                <button
-                  onClick={() => setShowLogin(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">סיסמה</label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="הכנס סיסמה..."
-                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none text-gray-800 font-medium"
-                      onKeyPress={(e) => e.key === 'Enter' && login(showLogin)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute left-3 top-3 text-gray-500 hover:text-gray-700"
-                    >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
-                  </div>
-                </div>
-                
-                <button
-                  onClick={() => login(showLogin)}
-                  disabled={loading || !password}
-                  className="w-full bg-green-500 text-white p-3 rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-bold"
-                >
-                  {loading ? '⏳ מתחבר...' : '🔓 התחבר'}
-                </button>
-              </div>
-
-              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-                <strong>לצורך בדיקה:</strong><br />
-                סוכן שטח: 123456<br />
-                מחסנאי: מחסן123
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <div className="bg-white shadow-md border-b-2 border-gray-200 p-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center space-x-3 space-x-reverse">
-            <Shield size={24} className="text-green-500" />
-            <span className="font-bold text-gray-800">
-              מחובר כ: {getRoleName(userRole)}
-            </span>
-          </div>
-          
-          <div className="flex items-center space-x-3 space-x-reverse">
-            <button
-              onClick={logout}
-              className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors font-bold"
-            >
-              🚪 התנתק
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {children}
-    </div>
-  );
-}
-
-// טופס ההזמנות (הקוד הקודם שעבד)
-function OrderForm() {
+export default function OrderForm() {
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState('');
@@ -238,6 +35,7 @@ function OrderForm() {
     loadCustomers();
     loadProducts();
     loadAllOrders();
+    // הגדרת תאריך ברירת מחדל למחר
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     setDeliveryDate(tomorrow.toISOString().split('T')[0]);
@@ -250,7 +48,7 @@ function OrderForm() {
         .select('*')
         .order('name');
       setCustomers(data || []);
-    } catch {
+    } catch (err) {
       console.log('Error loading customers');
     }
   };
@@ -263,7 +61,7 @@ function OrderForm() {
         .eq('is_active', true)
         .order('category, name');
       setProducts(data || []);
-    } catch {
+    } catch (err) {
       console.log('Error loading products');
     }
   };
@@ -283,7 +81,7 @@ function OrderForm() {
         .order('created_at', { ascending: false });
 
       setAllOrders(data || []);
-    } catch {
+    } catch (err) {
       console.log('Error loading orders');
     }
   };
@@ -313,12 +111,13 @@ function OrderForm() {
       setShowAddCustomer(false);
       setMessage(`✅ לקוח ${data.name} נוסף בהצלחה ונבחר!`);
       
-    } catch {
+    } catch (err) {
       setMessage('❌ שגיאה בהוספת הלקוח');
     }
   };
 
   const loadOrderForEdit = (order) => {
+    // בדיקה אם ההזמנה בטיפול במחסן
     if (order.status === 'בטיפול' || order.status === 'נשלחה' || order.status === 'הושלמה') {
       setMessage('❌ לא ניתן לערוך הזמנה שכבר בטיפול במחסן');
       return;
@@ -423,6 +222,7 @@ function OrderForm() {
 
       setMessage(`🎉 הזמנה ${orderNumber} נשלחה בהצלחה למחסן!`);
       
+      // איפוס הטופס
       setSelectedCustomer('');
       setOrderItems([]);
       setNotes('');
@@ -430,7 +230,7 @@ function OrderForm() {
       
       setTimeout(() => setMessage(''), 5000);
       
-    } catch {
+    } catch (err) {
       setMessage('❌ שגיאה בשליחת ההזמנה');
     } finally {
       setLoading(false);
@@ -482,7 +282,7 @@ function OrderForm() {
       setNotes('');
       loadAllOrders();
       
-    } catch {
+    } catch (err) {
       setMessage('❌ שגיאה בעדכון ההזמנה');
     } finally {
       setLoading(false);
@@ -553,6 +353,7 @@ function OrderForm() {
           </div>
         )}
 
+        {/* רשימת הזמנות קיימות */}
         {showOrdersList && (
           <div className="bg-white p-6 rounded-lg shadow-lg mb-6 border">
             <h3 className="font-bold text-gray-800 mb-4 text-lg">הזמנות קיימות לעריכה</h3>
@@ -599,7 +400,6 @@ function OrderForm() {
           </div>
         )}
 
-        {/* כאן תוסיף את שאר הטופס... */}
         <form onSubmit={editingOrder ? updateOrder : submitOrder} className="space-y-6">
           
           {/* בחירת לקוח */}
@@ -629,6 +429,7 @@ function OrderForm() {
               </button>
             </div>
 
+            {/* הוספת לקוח חדש */}
             {showAddCustomer && (
               <div className="mt-6 p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
                 <h4 className="font-bold text-gray-800 mb-3">הוספת לקוח חדש</h4>
@@ -717,147 +518,138 @@ function OrderForm() {
                 className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
               >
                 <option value="" className="text-gray-500">כל הקטגוריות</option>
-               {categories.map(category => (
-                 <option key={category} value={category} className="text-gray-800">{category}</option>
-               ))}
-             </select>
-           </div>
+                {categories.map(category => (
+                  <option key={category} value={category} className="text-gray-800">{category}</option>
+                ))}
+              </select>
+            </div>
 
-           <div className="max-h-96 overflow-y-auto grid gap-2">
-             {filteredProducts.map(product => (
-               <div key={product.id} className="flex justify-between items-center p-3 border rounded-lg hover:bg-blue-50 transition-colors">
-                 <div className="flex-1">
-                   <span className="font-medium text-gray-800">{product.name}</span>
-                   <div className="text-sm text-gray-600">
-                     <span className="bg-blue-100 px-2 py-1 rounded mr-2 text-blue-800 font-medium">{product.category}</span>
-                     <span className="text-gray-700">{product.unit || 'יחידה'}</span>
-                   </div>
-                 </div>
-                 <button
-                   type="button"
-                   onClick={() => addProduct(product)}
-                   className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition-colors font-medium"
-                 >
-                   ➕ הוסף
-                 </button>
-               </div>
-             ))}
-           </div>
-         </div>
+            <div className="max-h-96 overflow-y-auto grid gap-2">
+              {filteredProducts.map(product => (
+                <div key={product.id} className="flex justify-between items-center p-3 border rounded-lg hover:bg-blue-50 transition-colors">
+                  <div className="flex-1">
+                    <span className="font-medium text-gray-800">{product.name}</span>
+                    <div className="text-sm text-gray-600">
+                      <span className="bg-blue-100 px-2 py-1 rounded mr-2 text-blue-800 font-medium">{product.category}</span>
+                      <span className="text-gray-700">{product.unit || 'יחידה'}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => addProduct(product)}
+                    className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition-colors font-medium"
+                  >
+                    ➕ הוסף
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
 
-         {/* פריטי הזמנה */}
-         {orderItems.length > 0 && (
-           <div className="bg-white p-6 rounded-lg shadow-lg border">
-             <h3 className="font-bold text-gray-800 mb-4 text-lg">🛒 פריטי ההזמנה ({orderItems.length})</h3>
-             <div className="space-y-4">
-               {orderItems.map((item, index) => (
-                 <div key={index} className="p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
-                   <div className="flex justify-between items-start mb-3">
-                     <div className="flex-1">
-                       <div className="font-bold text-gray-800">{item.product_name}</div>
-                       <div className="text-sm text-blue-600 font-medium">{item.category}</div>
-                     </div>
-                     <button
-                       type="button"
-                       onClick={() => updateQuantity(index, 0)}
-                       className="text-red-500 hover:text-red-700 font-medium"
-                     >
-                       <Trash2 size={18} />
-                     </button>
-                   </div>
-                   
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                     <div>
-                       <label className="block text-sm font-bold text-gray-700 mb-1">כמות</label>
-                       <div className="flex items-center space-x-2 space-x-reverse">
-                         <button
-                           type="button"
-                           onClick={() => updateQuantity(index, item.quantity - 1)}
-                           className="w-8 h-8 bg-red-500 text-white rounded-full hover:bg-red-600 flex items-center justify-center font-bold"
-                         >
-                           <Minus size={16} />
-                         </button>
-                         <input
-                           type="number"
-                           value={item.quantity}
-                           onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 0)}
-                           className="w-16 text-center border-2 border-gray-300 rounded px-2 py-1 text-gray-800 bg-white font-bold"
-                           min="1"
-                         />
-                         <button
-                           type="button"
-                           onClick={() => updateQuantity(index, item.quantity + 1)}
-                           className="w-8 h-8 bg-green-500 text-white rounded-full hover:bg-green-600 flex items-center justify-center font-bold"
-                         >
-                           <Plus size={16} />
-                         </button>
-                         <span className="text-sm text-gray-600 mr-2 font-medium">{item.unit}</span>
-                       </div>
-                     </div>
-                     
-                     <div>
-                       <label className="block text-sm font-bold text-gray-700 mb-1">משקל (אופציונלי)</label>
-                       <input
-                         type="text"
-                         value={item.weight || ''}
-                         onChange={(e) => updateItemField(index, 'weight', e.target.value)}
-                         placeholder="כמה ק״ג?"
-                         className="w-full border-2 border-gray-300 rounded px-3 py-1 text-sm focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
-                       />
-                     </div>
-                     
-                     <div>
-                       <label className="block text-sm font-bold text-gray-700 mb-1">הערות (אופציונלי)</label>
-                       <input
-                         type="text"
-                         value={item.notes || ''}
-                         onChange={(e) => updateItemField(index, 'notes', e.target.value)}
-                         placeholder="הערות למוצר..."
-                         className="w-full border-2 border-gray-300 rounded px-3 py-1 text-sm focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
-                       />
-                     </div>
-                   </div>
-                 </div>
-               ))}
-             </div>
-           </div>
-         )}
+          {/* פריטי הזמנה */}
+          {orderItems.length > 0 && (
+            <div className="bg-white p-6 rounded-lg shadow-lg border">
+              <h3 className="font-bold text-gray-800 mb-4 text-lg">🛒 פריטי ההזמנה ({orderItems.length})</h3>
+              <div className="space-y-4">
+                {orderItems.map((item, index) => (
+                  <div key={index} className="p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <div className="font-bold text-gray-800">{item.product_name}</div>
+                        <div className="text-sm text-blue-600 font-medium">{item.category}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(index, 0)}
+                        className="text-red-500 hover:text-red-700 font-medium"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">כמות</label>
+                        <div className="flex items-center space-x-2 space-x-reverse">
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(index, item.quantity - 1)}
+                            className="w-8 h-8 bg-red-500 text-white rounded-full hover:bg-red-600 flex items-center justify-center font-bold"
+                          >
+                            <Minus size={16} />
+                          </button>
+                          <input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 0)}
+                            className="w-16 text-center border-2 border-gray-300 rounded px-2 py-1 text-gray-800 bg-white font-bold"
+                            min="1"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(index, item.quantity + 1)}
+                            className="w-8 h-8 bg-green-500 text-white rounded-full hover:bg-green-600 flex items-center justify-center font-bold"
+                          >
+                            <Plus size={16} />
+                          </button>
+                          <span className="text-sm text-gray-600 mr-2 font-medium">{item.unit}</span>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">משקל (אופציונלי)</label>
+                        <input
+                          type="text"
+                          value={item.weight || ''}
+                          onChange={(e) => updateItemField(index, 'weight', e.target.value)}
+                          placeholder="כמה ק״ג?"
+                          className="w-full border-2 border-gray-300 rounded px-3 py-1 text-sm focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">הערות (אופציונלי)</label>
+                        <input
+                          type="text"
+                          value={item.notes || ''}
+                          onChange={(e) => updateItemField(index, 'notes', e.target.value)}
+                          placeholder="הערות למוצר..."
+                          className="w-full border-2 border-gray-300 rounded px-3 py-1 text-sm focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-         {/* הערות נוספות */}
-         <div className="bg-white p-6 rounded-lg shadow-lg border">
-           <h3 className="font-bold text-gray-800 mb-4 text-lg">📝 הערות נוספות</h3>
-           <textarea
-             value={notes}
-             onChange={(e) => setNotes(e.target.value)}
-             placeholder="הערות כלליות להזמנה..."
-             className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
-             rows="4"
-           />
-         </div>
+          {/* הערות נוספות */}
+          <div className="bg-white p-6 rounded-lg shadow-lg border">
+            <h3 className="font-bold text-gray-800 mb-4 text-lg">📝 הערות נוספות</h3>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="הערות כלליות להזמנה..."
+              className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
+              rows="4"
+            />
+          </div>
 
-         {/* כפתור שליחה */}
-         <div className="bg-white p-6 rounded-lg shadow-lg border">
-           <div className="flex space-x-4 space-x-reverse">
-             <button
-               type="submit"
-               disabled={loading || !selectedCustomer || orderItems.length === 0}
-               className="flex-1 bg-green-500 text-white py-4 rounded-lg text-xl font-bold hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-             >
-               {loading ? '⏳ מעדכן...' : editingOrder ? '💾 עדכן הזמנה' : '🚀 שליחת הזמנה'}
-             </button>
-           </div>
-         </div>
-       </form>
-     </div>
-   </div>
- );
-}
-
-// הקומפוננטה הראשית
-export default function Page() {
- return (
-   <LoginSystem requiredRole="field_agent">
-     <OrderForm />
-   </LoginSystem>
- );
+          {/* כפתור שליחה */}
+          <div className="bg-white p-6 rounded-lg shadow-lg border">
+            <div className="flex space-x-4 space-x-reverse">
+              <button
+                type="submit"
+                disabled={loading || !selectedCustomer || orderItems.length === 0}
+                className="flex-1 bg-green-500 text-white py-4 rounded-lg text-xl font-bold hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {loading ? '⏳ מעדכן...' : editingOrder ? '💾 עדכן הזמנה' : '🚀 שליחת הזמנה'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
