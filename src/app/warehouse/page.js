@@ -623,4 +623,105 @@ export default function WarehouseDashboard() {
                     <h3 className="font-bold text-gray-800 mb-3 text-lg">פרטי הזמנה</h3>
                     <div className="space-y-2 text-sm bg-gray-50 p-4 rounded-lg border-2 border-gray-200">
                       <p className="text-gray-800"><span className="font-bold text-gray-900">תאריך אספקה:</span> {new Date(selectedOrder.delivery_date).toLocaleDateString('he-IL')}</p>
-                      <p className="text-gray-800"><span className="font-bold text-gray-900">סטטוס:</span> <span className={`px-2 py-1 rounded text-xs font-bold border ${getStatusColor(selectedOrder.
+                      <p className="text-gray-800"><span className="font-bold text-gray-900">סטטוס:</span> <span className={`px-2 py-1 rounded text-xs font-bold border ${getStatusColor(selectedOrder.status)}`}>{selectedOrder.status}</span></p>
+                      <p className="text-gray-800"><span className="font-bold text-gray-900">נוצרה:</span> {new Date(selectedOrder.created_at).toLocaleDateString('he-IL')}</p>
+                      <p className="text-gray-800"><span className="font-bold text-gray-900">עודכנה:</span> {new Date(selectedOrder.updated_at).toLocaleDateString('he-IL')}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mb-6">
+                  <h3 className="font-bold text-gray-800 mb-3 text-lg">פריטי הזמנה (מקובצים לפי קטגוריה)</h3>
+                  {(() => {
+                    // קיבוץ פריטים לפי קטגוריה
+                    const itemsByCategory = selectedOrder.order_items?.reduce((acc, item) => {
+                      const category = item.products?.category || 'אחר';
+                      if (!acc[category]) {
+                        acc[category] = [];
+                      }
+                      acc[category].push(item);
+                      return acc;
+                    }, {}) || {};
+
+                    return Object.entries(itemsByCategory).map(([category, items]) => (
+                      <div key={category} className="mb-4 border-2 border-gray-200 rounded-lg overflow-hidden">
+                        <div className="bg-blue-50 px-4 py-3 border-b-2 border-blue-200">
+                          <h4 className="font-bold text-blue-800 text-lg">{category}</h4>
+                        </div>
+                        <div className="divide-y-2 divide-gray-100">
+                          {items.map((item, index) => {
+                            const noteParts = item.notes ? item.notes.split(' | ') : ['', ''];
+                            const weight = noteParts[0]?.replace('משקל: ', '') || '';
+                            const notes = noteParts[1] || '';
+                            
+                            return (
+                              <div key={index} className="p-4 flex justify-between items-center bg-white hover:bg-gray-50">
+                                <div className="flex-1">
+                                  <p className="font-bold text-gray-800 text-lg">{item.products?.name || 'מוצר לא זמין'}</p>
+                                  {weight && <p className="text-sm text-gray-600 font-medium">משקל: {weight}</p>}
+                                  {notes && <p className="text-sm text-gray-600 font-medium">הערות: {notes}</p>}
+                                </div>
+                                <div className="text-left font-bold text-xl text-gray-800 min-w-[120px]">
+                                  {item.quantity} {item.products?.unit || 'יח׳'}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+                
+                {selectedOrder.notes && (
+                  <div className="mb-6">
+                    <h3 className="font-bold text-gray-800 mb-3 text-lg">הערות כלליות</h3>
+                    <p className="bg-yellow-50 p-4 rounded-lg border-2 border-yellow-200 text-gray-800 font-medium">{selectedOrder.notes}</p>
+                  </div>
+                )}
+                
+                <div className="flex space-x-4 space-x-reverse">
+                  {selectedOrder.status === 'חדשה' && (
+                    <button
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'בטיפול')}
+                      className="bg-yellow-500 text-white px-6 py-3 rounded-lg hover:bg-yellow-600 transition-colors font-bold border-2 border-yellow-600"
+                    >
+                      🔄 התחל טיפול
+                    </button>
+                  )}
+                  
+                  {selectedOrder.status === 'בטיפול' && (
+                    <button
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'נשלחה')}
+                      className="bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600 transition-colors font-bold border-2 border-purple-600"
+                    >
+                      🚚 סמן כנשלחה
+                    </button>
+                  )}
+                  
+                  {selectedOrder.status === 'נשלחה' && (
+                    <button
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'הושלמה')}
+                      className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors font-bold border-2 border-green-600"
+                    >
+                      ✅ סמן כהושלמה
+                    </button>
+                  )}
+                  
+                  {selectedOrder.status !== 'בוטלה' && selectedOrder.status !== 'הושלמה' && (
+                    <button
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'בוטלה')}
+                      className="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors font-bold border-2 border-red-600"
+                    >
+                      ❌ בטל הזמנה
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
