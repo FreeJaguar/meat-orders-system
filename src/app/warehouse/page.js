@@ -190,11 +190,11 @@ export default function WarehouseDashboard() {
           return `
             <div style="padding: 6px; border-bottom: 1px solid #d1d5db; display: flex; justify-content: space-between; align-items: center;">
               <div style="flex: 1;">
-                <div style="font-weight: bold; font-size: 16px; color: #1f2937;">${item.products?.name || 'מוצר לא זמין'}</div>
-                ${weight ? `<div style="font-size: 14px; color: #6b7280; margin-top: 4px;">משקל: ${weight}</div>` : ''}
+                <div style="font-weight: bold; font-size: 12px; color: #1f2937;">${item.products?.name || 'מוצר לא זמין'}</div>
+                ${weight ? `<div style="font-size: 10px; color: #6b7280; margin-top: 2px;">משקל: ${weight}</div>` : ''}
                 ${notes ? `<div style="font-size: 14px; color: #6b7280; margin-top: 4px;">הערות: ${notes}</div>` : ''}
               </div>
-              <div style="text-align: left; font-weight: bold; font-size: 18px; color: #1f2937; min-width: 100px;">
+              <div style="text-align: left; font-weight: bold; font-size: 12px; color: #1f2937; min-width: 60px;">
                 ${item.quantity} ${item.products?.unit || 'יח׳'}
               </div>
             </div>
@@ -230,23 +230,27 @@ export default function WarehouseDashboard() {
           body { 
             font-family: 'Segoe UI', Tahoma, Arial, sans-serif; 
             margin: 0;
-            padding: 20px;
-            line-height: 1.5;
-            font-size: 14px;
+            padding: 10px;
+            line-height: 1.2;
+            font-size: 11px;
             color: #1f2937;
             background: white;
           }
+
+          p { 
+            margin: 1px 0;
+          }
           
           .header { 
-            border-bottom: 3px solid #1f2937; 
-            padding-bottom: 20px; 
-            margin-bottom: 30px; 
+            border-bottom: 2px solid #1f2937; 
+            padding-bottom: 8px; 
+            margin-bottom: 10px; 
             text-align: center;
           }
           
           .header h1 {
-            font-size: 28px;
-            margin: 0 0 10px 0;
+            font-size: 18px;
+            margin: 0 0 5px 0;
             color: #1f2937;
           }
           
@@ -287,9 +291,9 @@ export default function WarehouseDashboard() {
           .items-header {
             background: #1f2937;
             color: white;
-            padding: 15px;
+            padding: 6px;
             margin: 0;
-            font-size: 20px;
+            font-size: 14px;
             font-weight: bold;
           }
           
@@ -338,11 +342,6 @@ export default function WarehouseDashboard() {
           <div class="categories-container">
             ${categoriesHTML}
           </div>
-        </div>
-        
-        <div class="footer">
-          <p><strong>הודפס ממערכת הזמנות דיגיטלית</strong></p>
-          <p>${new Date().toLocaleString('he-IL')}</p>
         </div>
       </body>
       </html>
@@ -634,7 +633,6 @@ export default function WarehouseDashboard() {
                 </div>
                 
                 <div className="mb-6">
-                  <h3 className="font-bold text-gray-800 mb-3 text-lg">פריטי הזמנה (מקובצים לפי קטגוריה)</h3>
                   {(() => {
                     // קיבוץ פריטים לפי קטגוריה
                     const itemsByCategory = selectedOrder.order_items?.reduce((acc, item) => {

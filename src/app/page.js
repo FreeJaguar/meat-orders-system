@@ -618,7 +618,7 @@ export default function OrderForm() {
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">משקל (אופציונלי)</label>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">משקל</label>
                         <input
                           type="text"
                           value={item.weight || ''}
@@ -629,7 +629,7 @@ export default function OrderForm() {
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">הערות (אופציונלי)</label>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">הערות</label>
                         <input
                           type="text"
                           value={item.notes || ''}
@@ -705,12 +705,14 @@ export default function OrderForm() {
                     >
                       +
                     </button>
-                    <span className="text-sm text-gray-600 mr-2 font-medium">{selectedProduct.unit}</span>
+                    <span className="text-sm text-gray-600 mr-2 font-medium">
+                      {selectedProduct.unit === 'ק"ג' ? 'קר׳' : selectedProduct.unit}
+                    </span>
                   </div>
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">משקל (אופציונלי)</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">משקל</label>
                   <input
                     type="text"
                     value={tempProduct.weight}
@@ -721,7 +723,7 @@ export default function OrderForm() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">הערות (אופציונלי)</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">הערות</label>
                   <input
                     type="text"
                     value={tempProduct.notes}
