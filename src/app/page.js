@@ -756,6 +756,6 @@ export default function OrderForm() {
   );
 }
 
-export default function Page() {
-  return <OrderForm />;
+export default function OrderForm() {
+  // כל הקוד
 }
