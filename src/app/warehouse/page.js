@@ -180,15 +180,15 @@ export default function WarehouseDashboard() {
     }, {}) || {};
 
     const categoriesHTML = Object.entries(itemsByCategory).map(([category, items]) => `
-      <div style="margin-bottom: 20px; page-break-inside: avoid;">
-        <h3 style="background: #e5e7eb; padding: 10px; margin: 0 0 10px 0; font-weight: bold; border-right: 4px solid #3b82f6; color: #1f2937;">${category}</h3>
+      <div class="category-section">
+        <h3 style="background: #e5e7eb; padding: 6px; margin: 0 0 5px 0; font-weight: bold; border-right: 4px solid #3b82f6; color: #1f2937; font-size: 14px;">${category}</h3>
         ${items.map(item => {
           const noteParts = item.notes ? item.notes.split(' | ') : ['', ''];
           const weight = noteParts[0]?.replace('משקל: ', '') || '';
           const notes = noteParts[1] || '';
           
           return `
-            <div style="padding: 12px; border-bottom: 1px solid #d1d5db; display: flex; justify-content: space-between; align-items: center;">
+            <div style="padding: 6px; border-bottom: 1px solid #d1d5db; display: flex; justify-content: space-between; align-items: center;">
               <div style="flex: 1;">
                 <div style="font-weight: bold; font-size: 16px; color: #1f2937;">${item.products?.name || 'מוצר לא זמין'}</div>
                 ${weight ? `<div style="font-size: 14px; color: #6b7280; margin-top: 4px;">משקל: ${weight}</div>` : ''}
@@ -214,6 +214,17 @@ export default function WarehouseDashboard() {
           @media print {
             body { margin: 0; padding: 20px; }
             .no-print { display: none !important; }
+          }
+
+          .categories-container {
+            columns: 2;
+            column-gap: 20px;
+          }
+
+          .category-section {
+            break-inside: avoid;
+            margin-bottom: 15px;
+            page-break-inside: avoid;
           }
           
           body { 
@@ -241,15 +252,15 @@ export default function WarehouseDashboard() {
           
           .info-grid { 
             display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 30px; 
-            margin-bottom: 30px; 
+            grid-template-columns: 1fr; 
+            gap: 20px; 
+            margin-bottom: 20px; 
           }
           
           .info-box { 
-            border: 2px solid #e5e7eb; 
-            padding: 15px; 
-            border-radius: 8px;
+            border: 1px solid #e5e7eb; 
+            padding: 8px; 
+            border-radius: 4px;
             background: #f9fafb;
           }
           
@@ -291,17 +302,6 @@ export default function WarehouseDashboard() {
         </style>
       </head>
       <body>
-        <div class="header">
-          <h1>🥩 הזמנה מספר ${order.order_number}</h1>
-          <p style="color: #6b7280; font-size: 16px;">תאריך הדפסה: ${new Date().toLocaleDateString('he-IL', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })}</p>
-        </div>
-        
         <div class="info-grid">
           <div class="info-box">
             <h3>פרטי לקוח</h3>
