@@ -613,7 +613,7 @@ export default function OrderForm() {
                           >
                             <Plus size={16} />
                           </button>
-                          <span className="text-sm text-gray-600 mr-2 font-medium">{item.unit}</span>
+                          <span className="text-sm text-gray-600 mr-2 font-medium">קר'</span>
                         </div>
                       </div>
                       
