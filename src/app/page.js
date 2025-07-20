@@ -31,6 +31,13 @@ export default function OrderForm() {
   const [showOrdersList, setShowOrdersList] = useState(false);
   const [allOrders, setAllOrders] = useState([]);
 
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [tempProduct, setTempProduct] = useState({
+    quantity: 1,
+    weight: '',
+    notes: ''
+  });
   useEffect(() => {
     loadCustomers();
     loadProducts();
@@ -150,21 +157,35 @@ export default function OrderForm() {
   };
 
   const addProduct = (product) => {
-    const existingIndex = orderItems.findIndex(item => item.product_id === product.id);
-    
-    if (existingIndex >= 0) {
-      updateQuantity(existingIndex, orderItems[existingIndex].quantity + 1);
-    } else {
-      setOrderItems([...orderItems, {
-        product_id: product.id,
-        product_name: product.name,
-        category: product.category,
-        quantity: 1,
-        weight: '',
-        notes: '',
-        unit: product.unit
-      }]);
-    }
+    setSelectedProduct(product);
+    setTempProduct({
+    quantity: 1,
+    weight: '',
+    notes: ''
+    });
+    setShowProductModal(true);
+  };
+  const confirmAddProduct = () => {
+  const existingIndex = orderItems.findIndex(item => item.product_id === selectedProduct.id);
+  
+  if (existingIndex >= 0) {
+    // עדכן כמות קיימת
+    updateQuantity(existingIndex, orderItems[existingIndex].quantity + tempProduct.quantity);
+  } else {
+    // הוסף פריט חדש
+    setOrderItems([...orderItems, {
+      product_id: selectedProduct.id,
+      product_name: selectedProduct.name,
+      category: selectedProduct.category,
+      quantity: tempProduct.quantity,
+      weight: tempProduct.weight,
+      notes: tempProduct.notes,
+      unit: selectedProduct.unit
+    }]);
+  }
+  
+  setShowProductModal(false);
+  setSelectedProduct(null);
   };
 
   const updateQuantity = (index, quantity) => {
@@ -539,7 +560,7 @@ export default function OrderForm() {
                     onClick={() => addProduct(product)}
                     className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition-colors font-medium"
                   >
-                    ➕ הוסף
+                    ⚙️ הגדר כמות
                   </button>
                 </div>
               ))}
@@ -649,7 +670,84 @@ export default function OrderForm() {
             </div>
           </div>
         </form>
+        {/* Modal להגדרת כמות מוצר */}
+        {showProductModal && selectedProduct && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-md w-full border-4 border-gray-300">
+              <div className="p-6 border-b-2 border-gray-200">
+                <h3 className="text-xl font-bold text-gray-800">
+                  הגדרת כמות - {selectedProduct.name}
+                </h3>
+              </div>
+              
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">כמות</label>
+                  <div className="flex items-center space-x-2 space-x-reverse">
+                    <button
+                      type="button"
+                      onClick={() => setTempProduct({...tempProduct, quantity: Math.max(1, tempProduct.quantity - 1)})}
+                      className="w-8 h-8 bg-red-500 text-white rounded-full hover:bg-red-600 flex items-center justify-center font-bold"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      value={tempProduct.quantity}
+                      onChange={(e) => setTempProduct({...tempProduct, quantity: parseInt(e.target.value) || 1})}
+                      className="w-20 text-center border-2 border-gray-300 rounded px-2 py-1 text-gray-800 bg-white font-bold"
+                      min="1"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setTempProduct({...tempProduct, quantity: tempProduct.quantity + 1})}
+                      className="w-8 h-8 bg-green-500 text-white rounded-full hover:bg-green-600 flex items-center justify-center font-bold"
+                    >
+                      +
+                    </button>
+                    <span className="text-sm text-gray-600 mr-2 font-medium">{selectedProduct.unit}</span>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">משקל (אופציונלי)</label>
+                  <input
+                    type="text"
+                    value={tempProduct.weight}
+                    onChange={(e) => setTempProduct({...tempProduct, weight: e.target.value})}
+                    placeholder="כמה ק״ג?"
+                    className="w-full border-2 border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">הערות (אופציונלי)</label>
+                  <input
+                    type="text"
+                    value={tempProduct.notes}
+                    onChange={(e) => setTempProduct({...tempProduct, notes: e.target.value})}
+                    placeholder="הערות למוצר..."
+                    className="w-full border-2 border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="p-6 border-t-2 border-gray-200 flex space-x-3 space-x-reverse">
+                <button
+                  onClick={confirmAddProduct}
+                  className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-colors font-bold flex-1"
+                >
+                  ✅ הוסף להזמנה
+                </button>
+                
+                <button
+                  onClick={() => setShowProductModal(false)}
+                  className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors font-bold"
+                >
+                ❌ ביטול
+        </button>
       </div>
     </div>
-  );
+  </div>
+)}
 }
