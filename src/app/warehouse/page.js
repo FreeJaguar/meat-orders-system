@@ -252,22 +252,24 @@ export default function WarehouseDashboard() {
           
           .info-grid { 
             display: grid; 
-            grid-template-columns: 1fr; 
-            gap: 20px; 
-            margin-bottom: 20px; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 10px; 
+            margin-bottom: 15px; 
           }
           
           .info-box { 
             border: 1px solid #e5e7eb; 
-            padding: 8px; 
-            border-radius: 4px;
+            padding: 4px; 
+            border-radius: 2px;
             background: #f9fafb;
+            font-size: 12px;
           }
           
           .info-box h3 {
-            margin: 0 0 10px 0;
-            font-size: 18px;
+            margin: 0 0 4px 0;
+            font-size: 12px;
             color: #1f2937;
+            font-weight: bold;
           }
           
           .info-box p {
@@ -333,7 +335,7 @@ export default function WarehouseDashboard() {
         
         <div class="items-container">
           <h2 class="items-header">פריטי ההזמנה מסודרים לפי קטגוריה</h2>
-          <div style="padding: 15px;">
+          <div class="categories-container">
             ${categoriesHTML}
           </div>
         </div>
