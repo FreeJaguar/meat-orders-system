@@ -755,7 +755,3 @@ export default function OrderForm() {
     </div>
   );
 }
-
-export default function OrderForm() {
-  // כל הקוד
-}
