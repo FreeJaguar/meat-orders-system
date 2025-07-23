@@ -324,7 +324,10 @@ export default function OrderForm() {
     return matchesSearch && matchesCategory;
   });
 
-  const categories = [...new Set(products.map(p => p.category))];
+  const predefinedOrder = ['מוצרי הודו', 'מוצרי בקר', 'מוצרים', 'מוסדי', 'נקניקים', 'כבש'];
+  const allCategories = [...new Set(products.map(p => p.category))];
+  const categories = predefinedOrder.filter(cat => allCategories.includes(cat))
+    .concat(allCategories.filter(cat => !predefinedOrder.includes(cat)));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4">
