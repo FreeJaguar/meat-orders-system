@@ -145,10 +145,9 @@ export default function WarehouseDashboard() {
   };
 
   // פונקציית הדפסה מתוקנת
-  const printOrder = (order) => {
-    // יצירת חלון הדפסה
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
-    
+  const printOrder = async (order) => {
+  const printWindow = window.open('', '_blank', 'width=800,height=600');
+  
     if (!printWindow) {
       alert('לא ניתן לפתוח חלון הדפסה. אנא בדוק את הגדרות החסימה בדפדפן.');
       return;
@@ -159,13 +158,26 @@ export default function WarehouseDashboard() {
     printWindow.document.write(printContent);
     printWindow.document.close();
     
-    // המתן לטעינה ואז הדפס
     printWindow.onload = function() {
       setTimeout(() => {
         printWindow.print();
         printWindow.close();
       }, 500);
     };
+
+    // עדכון סטטוס להודפס
+    try {
+      await supabase
+        .from('orders')
+        .update({ status: 'הודפס', updated_at: new Date().toISOString() })
+        .eq('id', order.id);
+      
+      loadOrders(); // רענון הרשימה
+      alert('✅ ההזמנה הודפסה וסומנה כהודפס');
+      
+    } catch {
+      alert('⚠️ ההדפסה בוצעה אך לא ניתן לעדכן את הסטטוס');
+    }
   };
 
   const generatePrintHTML = (order) => {
@@ -338,7 +350,6 @@ export default function WarehouseDashboard() {
         ` : ''}
         
         <div class="items-container">
-          <h2 class="items-header">פריטי ההזמנה מסודרים לפי קטגוריה</h2>
           <div class="categories-container">
             ${categoriesHTML}
           </div>
@@ -460,9 +471,7 @@ export default function WarehouseDashboard() {
             {[
               { key: 'all', label: 'כל ההזמנות', count: orders.length },
               { key: 'חדשה', label: 'חדשות', count: orders.filter(o => o.status === 'חדשה').length },
-              { key: 'בטיפול', label: 'בטיפול', count: orders.filter(o => o.status === 'בטיפול').length },
-              { key: 'נשלחה', label: 'נשלחו', count: orders.filter(o => o.status === 'נשלחה').length },
-              { key: 'הושלמה', label: 'הושלמו', count: orders.filter(o => o.status === 'הושלמה').length }
+              { key: 'הודפס', label: 'הודפס', count: orders.filter(o => o.status === 'הודפס').length }
             ].map(filterOption => (
               <button
                 key={filterOption.key}
@@ -547,33 +556,6 @@ export default function WarehouseDashboard() {
                         <Eye size={16} className="ml-1" />
                         צפה
                       </button>
-                      
-                      {order.status === 'חדשה' && (
-                        <button
-                          onClick={() => updateOrderStatus(order.id, 'בטיפול')}
-                          className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors font-bold border-2 border-yellow-600"
-                        >
-                          🔄 התחל טיפול
-                        </button>
-                      )}
-                      
-                      {order.status === 'בטיטול' && (
-                        <button
-                          onClick={() => updateOrderStatus(order.id, 'נשלחה')}
-                          className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors font-bold border-2 border-purple-600"
-                        >
-                          🚚 סמן כנשלחה
-                        </button>
-                      )}
-                      
-                      {order.status === 'נשלחה' && (
-                        <button
-                          onClick={() => updateOrderStatus(order.id, 'הושלמה')}
-                          className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors font-bold border-2 border-green-600"
-                        >
-                          ✅ סמן כהושלמה
-                        </button>
-                      )}
                     </div>
                   </div>
                 </div>
