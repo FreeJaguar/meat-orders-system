@@ -30,6 +30,8 @@ export default function OrderForm() {
   const [editingOrder, setEditingOrder] = useState(null);
   const [showOrdersList, setShowOrdersList] = useState(false);
   const [allOrders, setAllOrders] = useState([]);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
 
   const [showProductModal, setShowProductModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -59,6 +61,17 @@ export default function OrderForm() {
       console.log('Error loading customers');
     }
   };
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.customer-dropdown')) {
+        setShowCustomerDropdown(false);
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   const loadProducts = async () => {
     try {
@@ -430,19 +443,43 @@ export default function OrderForm() {
           <div className="bg-white p-6 rounded-lg shadow-lg border">
             <h3 className="font-bold text-gray-800 mb-4 text-lg">🏪 בחירת לקוח</h3>
             <div className="space-y-4">
-              <select
-                value={selectedCustomer}
-                onChange={(e) => setSelectedCustomer(e.target.value)}
-                className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
-                required
-              >
-                <option value="" className="text-gray-500">בחר לקוח...</option>
-                {customers.map(customer => (
-                  <option key={customer.id} value={customer.id} className="text-gray-800">
-                    {customer.name} {customer.code ? `(${customer.code})` : ''}
-                  </option>
-                ))}
-              </select>
+              <div className="relative customer-dropdown">
+                <input
+                  type="text"
+                  value={customerSearch}
+                  onChange={(e) => {
+                    setCustomerSearch(e.target.value);
+                    setShowCustomerDropdown(true);
+                  }}
+                  onFocus={() => setShowCustomerDropdown(true)}
+                  placeholder="חפש לקוח..."
+                  className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
+                />
+                
+                {showCustomerDropdown && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {customers
+                      .filter(customer => 
+                        customer.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+                        (customer.code && customer.code.toLowerCase().includes(customerSearch.toLowerCase()))
+                      )
+                      .map(customer => (
+                        <div
+                          key={customer.id}
+                          onClick={() => {
+                            setSelectedCustomer(customer.id);
+                            setCustomerSearch(`${customer.name} ${customer.code ? `(${customer.code})` : ''}`);
+                            setShowCustomerDropdown(false);
+                          }}
+                          className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                        >
+                          <span className="text-gray-800">{customer.name} {customer.code ? `(${customer.code})` : ''}</span>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
+              </div>
               
               <button
                 type="button"
