@@ -648,12 +648,11 @@ export default function OrderForm() {
                           />
                           <button
                             type="button"
-                            onClick={() => updateQuantity(index, item.quantity + 1)}
+                            onClick={() => updateQuantity(index, item.quantity + 0)}
                             className="w-8 h-8 bg-green-500 text-white rounded-full hover:bg-green-600 flex items-center justify-center font-bold"
                           >
                             <Plus size={16} />
                           </button>
-                          <span className="text-sm text-gray-600 mr-2 font-medium">קר</span>
                         </div>
                       </div>
                       
