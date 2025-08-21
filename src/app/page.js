@@ -206,15 +206,25 @@ export default function OrderForm() {
       setOrderItems(orderItems.filter((_, i) => i !== index));
     } else {
       setOrderItems(orderItems.map((item, i) => 
-        i === index ? { ...item, quantity } : item
+        i === index ? { ...item, quantity, weight: '' } : item
       ));
     }
   };
 
   const updateItemField = (index, field, value) => {
-    setOrderItems(orderItems.map((item, i) => 
-      i === index ? { ...item, [field]: value } : item
-    ));
+    setOrderItems(orderItems.map((item, i) => {
+      if (i === index) {
+        const updatedItem = { ...item, [field]: value };
+        
+        // אם משנים משקל ויש ערך, תאפס את הכמות ל-0
+        if (field === 'weight' && value && value.trim()) {
+          updatedItem.quantity = 0;
+        }
+        
+        return updatedItem;
+      }
+      return item;
+    }));
   };
 
   const submitOrder = async (e) => {
@@ -648,7 +658,7 @@ export default function OrderForm() {
                           />
                           <button
                             type="button"
-                            onClick={() => updateQuantity(index, item.quantity + 0)}
+                            onClick={() => updateQuantity(index, item.quantity + 1)}
                             className="w-8 h-8 bg-green-500 text-white rounded-full hover:bg-green-600 flex items-center justify-center font-bold"
                           >
                             <Plus size={16} />
@@ -725,7 +735,7 @@ export default function OrderForm() {
                   <div className="flex items-center space-x-2 space-x-reverse">
                     <button
                       type="button"
-                      onClick={() => setTempProduct({...tempProduct, quantity: Math.max(1, tempProduct.quantity - 1)})}
+                      onClick={() => setTempProduct({...tempProduct, quantity: Math.max(1, tempProduct.quantity - 1), weight: ''})}
                       className="w-8 h-8 bg-red-500 text-white rounded-full hover:bg-red-600 flex items-center justify-center font-bold"
                     >
                       -
@@ -733,13 +743,13 @@ export default function OrderForm() {
                     <input
                       type="number"
                       value={tempProduct.quantity}
-                      onChange={(e) => setTempProduct({...tempProduct, quantity: parseInt(e.target.value) || 1})}
+                      onChange={(e) => setTempProduct({...tempProduct, quantity: parseInt(e.target.value) || 1, weight: ''})}
                       className="w-20 text-center border-2 border-gray-300 rounded px-2 py-1 text-gray-800 bg-white font-bold"
                       min="1"
                     />
                     <button
                       type="button"
-                      onClick={() => setTempProduct({...tempProduct, quantity: tempProduct.quantity + 1})}
+                      onClick={() => setTempProduct({...tempProduct, quantity: tempProduct.quantity + 1, weight: ''})}
                       className="w-8 h-8 bg-green-500 text-white rounded-full hover:bg-green-600 flex items-center justify-center font-bold"
                     >
                       +
@@ -755,7 +765,11 @@ export default function OrderForm() {
                   <input
                     type="text"
                     value={tempProduct.weight}
-                    onChange={(e) => setTempProduct({...tempProduct, weight: e.target.value})}
+                    onChange={(e) => setTempProduct({
+                      ...tempProduct, 
+                      weight: e.target.value,
+                      quantity: e.target.value && e.target.value.trim() ? 0 : tempProduct.quantity
+                    })}
                     placeholder="כמה ק״ג?"
                     className="w-full border-2 border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
                   />
