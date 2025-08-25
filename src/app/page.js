@@ -182,8 +182,15 @@ export default function OrderForm() {
   const existingIndex = orderItems.findIndex(item => item.product_id === selectedProduct.id);
   
   if (existingIndex >= 0) {
-    // עדכן כמות קיימת
-    updateQuantity(existingIndex, orderItems[existingIndex].quantity + tempProduct.quantity);
+    // עדכן פריט קיים
+    const updatedItems = [...orderItems];
+    updatedItems[existingIndex] = {
+      ...updatedItems[existingIndex],
+      quantity: tempProduct.quantity,
+      weight: tempProduct.weight,
+      notes: tempProduct.notes
+    };
+    setOrderItems(updatedItems);
   } else {
     // הוסף פריט חדש
     setOrderItems([...orderItems, {
@@ -266,7 +273,7 @@ export default function OrderForm() {
       const orderItemsData = orderItems.map(item => ({
         order_id: orderData.id,
         product_id: item.product_id,
-        quantity: item.quantity,
+        quantity: item.quantity || 1, // Ensure minimum quantity of 1 for database constraints
         notes: `${item.weight ? `משקל: ${item.weight} | ` : ''}${item.notes || ''}`
       }));
 
@@ -330,7 +337,7 @@ export default function OrderForm() {
       const orderItemsData = orderItems.map(item => ({
         order_id: editingOrder.id,
         product_id: item.product_id,
-        quantity: item.quantity,
+        quantity: item.quantity || 1, // Ensure minimum quantity of 1 for database constraints
         notes: `${item.weight ? `משקל: ${item.weight} | ` : ''}${item.notes || ''}`
       }));
 
