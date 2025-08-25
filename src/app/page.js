@@ -216,8 +216,8 @@ export default function OrderForm() {
       if (i === index) {
         const updatedItem = { ...item, [field]: value };
         
-        // אם משנים משקל ויש ערך, תאפס את הכמות ל-0
-        if (field === 'weight' && value && value.trim()) {
+        // אם משנים משקל ויש ערך ואין כמות, תאפס את הכמות ל-0
+        if (field === 'weight' && value && value.trim() && !updatedItem.quantity) {
           updatedItem.quantity = 0;
         }
         
@@ -232,6 +232,16 @@ export default function OrderForm() {
     
     if (!selectedCustomer || orderItems.length === 0) {
       setMessage('❌ יש למלא את כל השדות הנדרשים');
+      return;
+    }
+    
+    // בדיקה שכל פריט יש לו כמות או משקל
+    const hasInvalidItems = orderItems.some(item => 
+      (!item.quantity || item.quantity <= 0) && (!item.weight || !item.weight.trim())
+    );
+    
+    if (hasInvalidItems) {
+      setMessage('❌ כל פריט חייב לכלול כמות או משקל');
       return;
     }
 
@@ -286,6 +296,16 @@ export default function OrderForm() {
     
     if (!selectedCustomer || orderItems.length === 0) {
       setMessage('❌ יש למלא את כל השדות הנדרשים');
+      return;
+    }
+    
+    // בדיקה שכל פריט יש לו כמות או משקל
+    const hasInvalidItems = orderItems.some(item => 
+      (!item.quantity || item.quantity <= 0) && (!item.weight || !item.weight.trim())
+    );
+    
+    if (hasInvalidItems) {
+      setMessage('❌ כל פריט חייב לכלול כמות או משקל');
       return;
     }
 
@@ -654,7 +674,7 @@ export default function OrderForm() {
                             value={item.quantity}
                             onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 0)}
                             className="w-16 text-center border-2 border-gray-300 rounded px-2 py-1 text-gray-800 bg-white font-bold"
-                            min="1"
+                            min="0"
                           />
                           <button
                             type="button"
@@ -711,7 +731,7 @@ export default function OrderForm() {
             <div className="flex space-x-4 space-x-reverse">
               <button
                 type="submit"
-                disabled={loading || !selectedCustomer || orderItems.length === 0}
+                disabled={loading || !selectedCustomer || orderItems.length === 0 || orderItems.some(item => (!item.quantity || item.quantity <= 0) && (!item.weight || !item.weight.trim()))}
                 className="flex-1 bg-green-500 text-white py-4 rounded-lg text-xl font-bold hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? '⏳ מעדכן...' : editingOrder ? '💾 עדכן הזמנה' : '🚀 שליחת הזמנה'}
@@ -745,7 +765,7 @@ export default function OrderForm() {
                       value={tempProduct.quantity}
                       onChange={(e) => setTempProduct({...tempProduct, quantity: parseInt(e.target.value) || 1, weight: ''})}
                       className="w-20 text-center border-2 border-gray-300 rounded px-2 py-1 text-gray-800 bg-white font-bold"
-                      min="1"
+                      min="0"
                     />
                     <button
                       type="button"
@@ -768,7 +788,7 @@ export default function OrderForm() {
                     onChange={(e) => setTempProduct({
                       ...tempProduct, 
                       weight: e.target.value,
-                      quantity: e.target.value && e.target.value.trim() ? 0 : tempProduct.quantity
+                      quantity: e.target.value && e.target.value.trim() && !tempProduct.quantity ? 0 : tempProduct.quantity
                     })}
                     placeholder="כמה ק״ג?"
                     className="w-full border-2 border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
