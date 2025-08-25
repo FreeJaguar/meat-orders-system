@@ -207,7 +207,7 @@ export default function WarehouseDashboard() {
                 ${notes ? `<div style="font-size: 14px; color: #6b7280; margin-top: 4px;">הערות: ${notes}</div>` : ''}
               </div>
               <div style="text-align: left; font-weight: bold; font-size: 12px; color: #1f2937; min-width: 60px;">
-                ${item.quantity} ${item.products?.unit || 'יח׳'}
+                ${item.quantity > 0 ? `${item.quantity} ${item.products?.unit || 'יח׳'}` : (weight ? `${weight}` : 'לפי משקל')}
               </div>
             </div>
           `;
@@ -645,7 +645,7 @@ export default function WarehouseDashboard() {
                                   {notes && <p className="text-sm text-gray-600 font-medium">הערות: {notes}</p>}
                                 </div>
                                 <div className="text-left font-bold text-xl text-gray-800 min-w-[120px]">
-                                  {item.quantity} {item.products?.unit || 'יח׳'}
+                                  {item.quantity > 0 ? `${item.quantity} ${item.products?.unit || 'יח׳'}` : (weight ? `${weight}` : 'לפי משקל')}
                                 </div>
                               </div>
                             );

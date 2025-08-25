@@ -258,7 +258,7 @@ export default function OrderForm() {
           delivery_date: deliveryDate,
           status: 'חדשה',
           notes: notes,
-          total_items: orderItems.reduce((sum, item) => sum + item.quantity, 0)
+          total_items: orderItems.length
         }])
         .select()
         .single();
