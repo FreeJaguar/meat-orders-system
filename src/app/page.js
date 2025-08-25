@@ -237,7 +237,7 @@ export default function OrderForm() {
     
     // בדיקה שכל פריט יש לו כמות או משקל
     const hasInvalidItems = orderItems.some(item => 
-      (!item.quantity || item.quantity <= 0) && (!item.weight || !item.weight.trim())
+      (item.quantity <= 0) && (!item.weight || !item.weight.trim())
     );
     
     if (hasInvalidItems) {
@@ -301,7 +301,7 @@ export default function OrderForm() {
     
     // בדיקה שכל פריט יש לו כמות או משקל
     const hasInvalidItems = orderItems.some(item => 
-      (!item.quantity || item.quantity <= 0) && (!item.weight || !item.weight.trim())
+      (item.quantity <= 0) && (!item.weight || !item.weight.trim())
     );
     
     if (hasInvalidItems) {
@@ -731,7 +731,7 @@ export default function OrderForm() {
             <div className="flex space-x-4 space-x-reverse">
               <button
                 type="submit"
-                disabled={loading || !selectedCustomer || orderItems.length === 0 || orderItems.some(item => (!item.quantity || item.quantity <= 0) && (!item.weight || !item.weight.trim()))}
+                disabled={loading || !selectedCustomer || orderItems.length === 0 || orderItems.some(item => (item.quantity <= 0) && (!item.weight || !item.weight.trim()))}
                 className="flex-1 bg-green-500 text-white py-4 rounded-lg text-xl font-bold hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? '⏳ מעדכן...' : editingOrder ? '💾 עדכן הזמנה' : '🚀 שליחת הזמנה'}
