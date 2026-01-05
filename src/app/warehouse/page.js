@@ -195,10 +195,41 @@ export default function WarehouseDashboard() {
       <div class="category-section">
         <h3 style="background: #e5e7eb; padding: 6px; margin: 0 0 5px 0; font-weight: bold; border-right: 4px solid #3b82f6; color: #1f2937; font-size: 14px;">${category}</h3>
         ${items.map(item => {
-          const noteParts = item.notes ? item.notes.split(' | ') : ['', ''];
-          const weight = noteParts[0]?.replace('משקל: ', '') || '';
-          const notes = noteParts[1] || '';
-          
+          const parseItemNotes = (raw) => {
+          const result = { weight: '', notes: '' };
+          if (!raw) return result;
+
+          const text = String(raw).trim();
+
+          // אם יש מפריד, ננסה לפרק לשני חלקים
+          if (text.includes(' | ')) {
+            const [part1, part2 = ''] = text.split(' | ');
+            const p1 = part1.trim();
+            const p2 = part2.trim();
+
+            if (p1.startsWith('משקל:')) {
+              result.weight = p1.replace('משקל:', '').trim();
+              result.notes = p2;
+            } else {
+              // מקרה נדיר: יש מפריד אבל החלק הראשון לא משקל
+              result.notes = [p1, p2].filter(Boolean).join(' ');
+            }
+
+            return result;
+          }
+
+          // בלי מפריד: זה הערה רגילה, לא משקל
+          if (text.startsWith('משקל:')) {
+            result.weight = text.replace('משקל:', '').trim();
+          } else {
+            result.notes = text;
+          }
+
+          return result;
+        };
+
+          const { weight, notes } = parseItemNotes(item.notes);
+
           return `
             <div style="padding: 6px; border-bottom: 1px solid #d1d5db; display: flex; justify-content: space-between; align-items: center;">
               <div style="flex: 1;">
@@ -633,10 +664,41 @@ export default function WarehouseDashboard() {
                         </div>
                         <div className="divide-y-2 divide-gray-100">
                           {items.map((item, index) => {
-                            const noteParts = item.notes ? item.notes.split(' | ') : ['', ''];
-                            const weight = noteParts[0]?.replace('משקל: ', '') || '';
-                            const notes = noteParts[1] || '';
-                            
+                            const parseItemNotes = (raw) => {
+                            const result = { weight: '', notes: '' };
+                            if (!raw) return result;
+
+                            const text = String(raw).trim();
+
+                            // אם יש מפריד, ננסה לפרק לשני חלקים
+                            if (text.includes(' | ')) {
+                              const [part1, part2 = ''] = text.split(' | ');
+                              const p1 = part1.trim();
+                              const p2 = part2.trim();
+
+                              if (p1.startsWith('משקל:')) {
+                                result.weight = p1.replace('משקל:', '').trim();
+                                result.notes = p2;
+                              } else {
+                                // מקרה נדיר: יש מפריד אבל החלק הראשון לא משקל
+                                result.notes = [p1, p2].filter(Boolean).join(' ');
+                              }
+
+                              return result;
+                            }
+
+                            // בלי מפריד: זה הערה רגילה, לא משקל
+                            if (text.startsWith('משקל:')) {
+                              result.weight = text.replace('משקל:', '').trim();
+                            } else {
+                              result.notes = text;
+                            }
+
+                            return result;
+                          };
+
+                            const { weight, notes } = parseItemNotes(item.notes);
+
                             return (
                               <div key={index} className="p-4 flex justify-between items-center bg-white hover:bg-gray-50">
                                 <div className="flex-1">
