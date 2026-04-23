@@ -1,3 +1,11 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(git pull:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(grep -E '\\\\.\\(json|js|jsx|ts|tsx|html|css|env\\)$')"
+    ]
+  },
   "outputStyle": "default"
 }
