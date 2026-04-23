@@ -187,28 +187,36 @@ export default function OrderForm() {
     }
   };
 
-  // Fetches the last 20 non-cancelled orders for the selected customer
-  // and shows the history panel (only if results exist).
+  // Fetches the last 20 orders for the selected customer.
+  // Uses * for order_items so the query works whether or not the weight
+  // column migration has been run (explicit column lists fail with a
+  // Supabase 42703 error when a column doesn't exist yet).
   const loadCustomerOrders = async (customerId) => {
     setLoadingHistory(true);
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('orders')
         .select(`
           id, order_number, created_at, delivery_date, status, total_items,
           order_items (
-            id, quantity, weight, notes, product_id,
+            *,
             products (name, category, unit)
           )
         `)
         .eq('customer_id', customerId)
-        .neq('status', 'בוטלה')
         .order('created_at', { ascending: false })
         .limit(20);
+
+      if (error) {
+        console.error('Error loading customer orders:', error.message, error.code);
+        setCustomerOrders([]);
+        return;
+      }
+
       setCustomerOrders(data || []);
-      if (data && data.length > 0) setShowCustomerHistory(true);
-    } catch {
-      console.log('Error loading customer orders');
+    } catch (err) {
+      console.error('Unexpected error loading customer orders:', err);
+      setCustomerOrders([]);
     } finally {
       setLoadingHistory(false);
     }
