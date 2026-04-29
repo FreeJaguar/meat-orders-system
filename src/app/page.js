@@ -357,9 +357,14 @@ export default function OrderForm() {
   };
 
   const updateItemField = (index, field, value) => {
-    setOrderItems(orderItems.map((item, i) => {
-      if (i !== index) return item;
-      const updated = { ...item, [field]: value };
+    const item = orderItems[index];
+    if (field === 'weight' && !(value && value.trim()) && item.quantity <= 0) {
+      removeItem(index);
+      return;
+    }
+    setOrderItems(orderItems.map((it, i) => {
+      if (i !== index) return it;
+      const updated = { ...it, [field]: value };
       if (field === 'weight' && value && value.trim()) updated.quantity = 0;
       if (field === 'quantity' && value > 0)           updated.weight = '';
       return updated;
