@@ -500,6 +500,8 @@ export default function OrderForm() {
     setCustomerSearch('');
     setNotes('');
     setDeliveryDate(tomorrow.toISOString().split('T')[0]);
+    setEditingOrder(null);
+    setMessage('');
     try { localStorage.removeItem(DRAFT_KEY); } catch {}
   };
 
