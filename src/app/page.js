@@ -340,6 +340,9 @@ export default function OrderForm() {
   };
 
   // ─── Inline quantity / field updates ─────────────────────────────────────
+  const removeItem = (index) =>
+    setOrderItems(prev => prev.filter((_, i) => i !== index));
+
   const updateQuantity = (index, quantity) => {
     setOrderItems(orderItems.map((item, i) =>
       i === index ? { ...item, quantity, weight: quantity > 0 ? '' : item.weight } : item
@@ -818,7 +821,7 @@ export default function OrderForm() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => updateQuantity(index, 0)}
+                        onClick={() => removeItem(index)}
                         className="text-red-500 hover:text-red-700 font-medium"
                       >
                         <Trash2 size={18} />
