@@ -82,7 +82,12 @@ export default function OrderForm() {
         if (draft.customerSearch)   setCustomerSearch(draft.customerSearch);
         if (draft.deliveryDate)     { setDeliveryDate(draft.deliveryDate); hasDraftDate = true; }
         if (draft.notes)            setNotes(draft.notes);
-        if (draft.orderItems?.length > 0) setOrderItems(draft.orderItems);
+        if (draft.orderItems?.length > 0) {
+          const valid = draft.orderItems.filter(
+            item => item.quantity > 0 || (item.weight && item.weight.trim())
+          );
+          if (valid.length > 0) setOrderItems(valid);
+        }
       }
     } catch {
       // malformed localStorage — ignore
