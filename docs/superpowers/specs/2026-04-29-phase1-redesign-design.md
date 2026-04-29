@@ -174,6 +174,28 @@ Only **pure presentational components** are extracted. All state, effects, and S
 - All handlers (`onRemove`, `onQuantityChange`, `onFieldChange`) are passed from `page.js` — the functions `removeItem`, `updateQuantity`, `updateItemField` are unchanged
 - No state, no logic
 
+---
+
+### Feedback Message Color Logic — Emoji Coupling Fix
+
+The current `page.js` render uses emoji as status detectors for the feedback message color:
+```js
+message.includes('🎉') || message.includes('✅') || message.includes('בהצלחה') → green
+message.includes('📝') || message.includes('📋')                                → blue (info)
+else                                                                              → red
+```
+
+When emoji are removed from message strings in Step 6, the `🎉` and `📝/📋` checks break. This is a render-layer change, not business logic. The fix: replace emoji matching with Hebrew keyword matching.
+
+Updated logic for Step 6:
+```js
+message.includes('בהצלחה') || message.includes('נשלחה') || message.includes('עודכנה') || message.includes('נוסף')  → green
+message.includes('עורך') || message.includes('הועתקו') || message.includes('פריטים')                               → blue (info)
+else                                                                                                                  → red
+```
+
+**What does NOT change:** The `setMessage(...)` calls inside `submitOrder`, `updateOrder`, `addNewCustomer`, `cloneOrder`, `loadOrderForEdit` — those strings are updated only in the Step 6 final pass when emoji are stripped from all static and dynamic UI text. The logic change is limited to the conditional in the render section.
+
 ### What Is NOT Extracted in Phase 1
 
 | Component | Reason deferred |
