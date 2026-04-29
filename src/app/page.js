@@ -344,14 +344,16 @@ export default function OrderForm() {
     setOrderItems(prev => prev.filter((_, i) => i !== index));
 
   const updateQuantity = (index, quantity) => {
-    const item = orderItems[index];
-    if (quantity <= 0 && !(item.weight && item.weight.trim())) {
-      removeItem(index);
-    } else {
-      setOrderItems(orderItems.map((it, i) =>
-        i === index ? { ...it, quantity, weight: quantity > 0 ? '' : it.weight } : it
-      ));
-    }
+    setOrderItems(prev => {
+      const item = prev[index];
+      if (!item) return prev;
+      if (quantity <= 0 && !(item.weight && item.weight.trim())) {
+        return prev.filter((_, i) => i !== index);
+      }
+      return prev.map((it, i) =>
+        i === index ? { ...it, quantity: Math.max(0, quantity), weight: quantity > 0 ? '' : it.weight } : it
+      );
+    });
   };
 
   const updateItemField = (index, field, value) => {
