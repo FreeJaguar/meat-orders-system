@@ -112,14 +112,17 @@ Button: **"נקה פריטים"** — placed in the order-items card header, nex
 
 ### 8. New action — `clearOrder()`
 
-Resets items, selected customer, customer search text, and notes; clears localStorage:
+Resets the form to a fully clean state: items, selected customer, customer search text, notes, and delivery date (reset to tomorrow). Clears localStorage:
 
 ```js
 const clearOrder = () => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
   setOrderItems([]);
   setSelectedCustomer('');
   setCustomerSearch('');
   setNotes('');
+  setDeliveryDate(tomorrow.toISOString().split('T')[0]);
   try { localStorage.removeItem(DRAFT_KEY); } catch {}
 };
 ```
