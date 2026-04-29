@@ -132,6 +132,11 @@ The order panel must be a flex column where:
 - The order items list is `flex-1 overflow-y: auto` (scrollable)
 - The footer (submit button, total count, clear order) is `flex-shrink: 0` (always visible, never scrolls out)
 
+**Footer visual separation (required):** The footer must read as a distinct fixed action zone, not just content that happens to be at the bottom. Achieved by:
+- `border-top: 1px solid var(--color-border-strong)` separating it from the scrollable list
+- Background: `var(--color-surface-alt)` (`#FAF7F3`) — slightly different from the panel background to reinforce the zone boundary
+- Padding: `16px` minimum on all sides
+
 This ensures the submit button and order summary are always on screen regardless of how many items are in the order.
 
 **Phone fallback (< 480px width):**
@@ -163,8 +168,13 @@ Only **pure presentational components** are extracted. All state, effects, and S
 - Props: `product: object`, `onAdd: function`, `isInOrder: boolean`
 - Responsibility: Single row in the product catalog grid
 - Displays: product name, category badge, unit
-- Shows a visual indicator if the product is already in the current order (`isInOrder`)
-- Calls `onAdd(product)` when the action button is clicked
+- **"Already in order" state must be immediately scannable under time pressure** — not a subtle indicator. When `isInOrder` is true:
+  - Background changes to `var(--color-accent-light)` (`#EDE4D8`)
+  - Left border: 3px solid `var(--color-accent)`
+  - Action button label changes from "הוסף" (Add) to "עדכן" (Update), using accent color outline style
+  - Product name rendered in slightly bolder weight
+- When `isInOrder` is false: default white surface, standard button
+- Calls `onAdd(product)` when the action button is clicked regardless of state
 - No state, no logic
 
 #### 4. `OrderItemRow` — `src/components/agent/OrderItemRow.jsx`
