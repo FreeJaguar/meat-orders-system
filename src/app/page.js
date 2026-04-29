@@ -487,6 +487,22 @@ export default function OrderForm() {
     setMessage('');
   };
 
+  const clearItems = () => {
+    setOrderItems([]);
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+  };
+
+  const clearOrder = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setOrderItems([]);
+    setSelectedCustomer('');
+    setCustomerSearch('');
+    setNotes('');
+    setDeliveryDate(tomorrow.toISOString().split('T')[0]);
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+  };
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     router.replace('/login');
@@ -828,10 +844,19 @@ export default function OrderForm() {
           {/* Order items */}
           {orderItems.length > 0 && (
             <div className="bg-white p-6 rounded-lg shadow-lg border">
-              <h3 className="font-bold text-gray-800 mb-4 text-lg">🛒 פריטי ההזמנה ({orderItems.length})</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-gray-800 text-lg">🛒 פריטי ההזמנה ({orderItems.length})</h3>
+                <button
+                  type="button"
+                  onClick={clearItems}
+                  className="text-sm text-red-500 hover:text-red-700 font-medium border border-red-300 hover:border-red-500 px-3 py-1 rounded transition-colors"
+                >
+                  נקה פריטים
+                </button>
+              </div>
               <div className="space-y-4">
                 {orderItems.map((item, index) => (
-                  <div key={index} className="p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
+                  <div key={item.product_id} className="p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
                         <div className="font-bold text-gray-800">{item.product_name}</div>
@@ -900,16 +925,25 @@ export default function OrderForm() {
 
           {/* Submit */}
           <div className="bg-white p-6 rounded-lg shadow-lg border">
-            <button
-              type="submit"
-              disabled={
-                loading || !selectedCustomer || orderItems.length === 0 ||
-                orderItems.some(item => item.quantity <= 0 && (!item.weight || !item.weight.trim()))
-              }
-              className="w-full bg-green-500 text-white py-4 rounded-lg text-xl font-bold hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? '⏳ מעדכן...' : editingOrder ? '💾 עדכן הזמנה' : '🚀 שליחת הזמנה'}
-            </button>
+            <div className="flex flex-col gap-3">
+              <button
+                type="submit"
+                disabled={
+                  loading || !selectedCustomer || orderItems.length === 0 ||
+                  orderItems.some(item => item.quantity <= 0 && (!item.weight || !item.weight.trim()))
+                }
+                className="w-full bg-green-500 text-white py-4 rounded-lg text-xl font-bold hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {loading ? '⏳ מעדכן...' : editingOrder ? '💾 עדכן הזמנה' : '🚀 שליחת הזמנה'}
+              </button>
+              <button
+                type="button"
+                onClick={clearOrder}
+                className="w-full border-2 border-red-400 text-red-600 py-2 rounded-lg font-medium hover:bg-red-50 transition-colors"
+              >
+                🗑️ נקה הזמנה
+              </button>
+            </div>
           </div>
         </form>
 
