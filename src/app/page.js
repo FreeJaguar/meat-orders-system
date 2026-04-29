@@ -362,19 +362,20 @@ export default function OrderForm() {
   };
 
   const updateItemField = (index, field, value) => {
-    const item = orderItems[index];
-    if (!item) return;
-    if (field === 'weight' && !(value && value.trim()) && item.quantity <= 0) {
-      removeItem(index);
-      return;
-    }
-    setOrderItems(orderItems.map((it, i) => {
-      if (i !== index) return it;
-      const updated = { ...it, [field]: value };
-      if (field === 'weight' && value && value.trim()) updated.quantity = 0;
-      if (field === 'quantity' && value > 0)           updated.weight = '';
-      return updated;
-    }));
+    setOrderItems(prev => {
+      const item = prev[index];
+      if (!item) return prev;
+      if (field === 'weight' && !(value && value.trim()) && item.quantity <= 0) {
+        return prev.filter((_, i) => i !== index);
+      }
+      return prev.map((it, i) => {
+        if (i !== index) return it;
+        const updated = { ...it, [field]: value };
+        if (field === 'weight' && value && value.trim()) updated.quantity = 0;
+        if (field === 'quantity' && value > 0)           updated.weight = '';
+        return updated;
+      });
+    });
   };
 
   // ─── Shared validation ────────────────────────────────────────────────────
