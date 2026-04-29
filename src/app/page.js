@@ -358,6 +358,7 @@ export default function OrderForm() {
 
   const updateItemField = (index, field, value) => {
     const item = orderItems[index];
+    if (!item) return;
     if (field === 'weight' && !(value && value.trim()) && item.quantity <= 0) {
       removeItem(index);
       return;
