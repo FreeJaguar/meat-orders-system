@@ -344,9 +344,14 @@ export default function OrderForm() {
     setOrderItems(prev => prev.filter((_, i) => i !== index));
 
   const updateQuantity = (index, quantity) => {
-    setOrderItems(orderItems.map((item, i) =>
-      i === index ? { ...item, quantity, weight: quantity > 0 ? '' : item.weight } : item
-    ));
+    const item = orderItems[index];
+    if (quantity <= 0 && !(item.weight && item.weight.trim())) {
+      removeItem(index);
+    } else {
+      setOrderItems(orderItems.map((it, i) =>
+        i === index ? { ...it, quantity, weight: quantity > 0 ? '' : it.weight } : it
+      ));
+    }
   };
 
   const updateItemField = (index, field, value) => {
