@@ -13,8 +13,7 @@ export default function ProductCard({ product, onAdd, isInOrder }) {
     >
       <div className="flex-1">
         <span
-          className="font-medium text-[var(--color-text)]"
-          style={isInOrder ? { fontWeight: 600 } : undefined}
+          className={`text-[var(--color-text)] ${isInOrder ? 'font-semibold' : 'font-medium'}`}
         >
           {product.name}
         </span>
