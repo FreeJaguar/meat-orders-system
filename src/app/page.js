@@ -1022,11 +1022,11 @@ export default function OrderForm() {
               </div>
             </div>
             <div className="p-5 border-t border-[var(--color-border)] flex gap-3">
-              <button onClick={confirmAddProduct}
+              <button type="button" onClick={confirmAddProduct}
                 className="bg-[var(--color-accent)] text-white px-6 py-2.5 rounded-lg hover:opacity-90 transition-opacity font-bold flex-1">
                 ✅ הוסף להזמנה
               </button>
-              <button onClick={() => setShowProductModal(false)}
+              <button type="button" onClick={() => setShowProductModal(false)}
                 className="border border-[var(--color-border-strong)] text-[var(--color-text-secondary)] px-6 py-2.5 rounded-lg hover:bg-[var(--color-accent-light)] transition-colors font-medium">
                 ❌ ביטול
               </button>
