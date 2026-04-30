@@ -234,7 +234,7 @@ export default function OrderForm() {
   // ─── Customer actions ────────────────────────────────────────────────────
   const addNewCustomer = async () => {
     if (!newCustomer.name) {
-      setMessage('❌ יש למלא את שם הלקוח');
+      setMessage('יש למלא את שם הלקוח');
       return;
     }
     try {
@@ -254,9 +254,9 @@ export default function OrderForm() {
       setCustomerSearch(`${data.name}${data.code ? ` (${data.code})` : ''}`);
       setNewCustomer({ name: '', code: '', phone: '', address: '', contact_person: '' });
       setShowAddCustomer(false);
-      setMessage(`✅ לקוח ${data.name} נוסף בהצלחה ונבחר!`);
+      setMessage(`לקוח ${data.name} נוסף בהצלחה ונבחר!`);
     } catch {
-      setMessage('❌ שגיאה בהוספת הלקוח');
+      setMessage('שגיאה בהוספת הלקוח');
     }
   };
 
@@ -283,13 +283,13 @@ export default function OrderForm() {
     tomorrow.setDate(tomorrow.getDate() + 1);
     setDeliveryDate(tomorrow.toISOString().split('T')[0]);
     setShowCustomerHistory(false);
-    setMessage(`📋 פריטים הועתקו מהזמנה ${order.order_number} — עדכן ובדוק לפני שליחה`);
+    setMessage(`פריטים הועתקו מהזמנה ${order.order_number} — עדכן ובדוק לפני שליחה`);
   };
 
   // ─── Edit existing order ──────────────────────────────────────────────────
   const loadOrderForEdit = (order) => {
     if (['בטיפול', 'נשלחה', 'הושלמה'].includes(order.status)) {
-      setMessage('❌ לא ניתן לערוך הזמנה שכבר בטיפול במחסן');
+      setMessage('לא ניתן לערוך הזמנה שכבר בטיפול במחסן');
       return;
     }
     setEditingOrder(order);
@@ -312,7 +312,7 @@ export default function OrderForm() {
 
     setOrderItems(items);
     setShowOrdersList(false);
-    setMessage(`📝 עורך הזמנה ${order.order_number} (סטטוס: ${order.status})`);
+    setMessage(`עורך הזמנה ${order.order_number} (סטטוס: ${order.status})`);
   };
 
   // ─── Product modal ────────────────────────────────────────────────────────
@@ -385,14 +385,14 @@ export default function OrderForm() {
   // ─── Shared validation ────────────────────────────────────────────────────
   const validateForm = () => {
     if (!selectedCustomer || orderItems.length === 0) {
-      setMessage('❌ יש למלא את כל השדות הנדרשים');
+      setMessage('יש למלא את כל השדות הנדרשים');
       return false;
     }
     const hasInvalidItems = orderItems.some(
       item => item.quantity <= 0 && (!item.weight || !item.weight.trim())
     );
     if (hasInvalidItems) {
-      setMessage('❌ כל פריט חייב לכלול כמות או משקל');
+      setMessage('כל פריט חייב לכלול כמות או משקל');
       return false;
     }
     return true;
@@ -436,7 +436,7 @@ export default function OrderForm() {
       // Clear draft only after confirmed success
       try { localStorage.removeItem(DRAFT_KEY); } catch {}
 
-      setMessage(`🎉 הזמנה ${orderNumber} נשלחה בהצלחה למחסן!`);
+      setMessage(`הזמנה ${orderNumber} נשלחה בהצלחה למחסן!`);
       setSelectedCustomer('');
       setCustomerSearch('');
       setOrderItems([]);
@@ -444,7 +444,7 @@ export default function OrderForm() {
       loadAllOrders();
       setTimeout(() => setMessage(''), 5000);
     } catch {
-      setMessage('❌ שגיאה בשליחת ההזמנה');
+      setMessage('שגיאה בשליחת ההזמנה');
     } finally {
       setLoading(false);
     }
@@ -469,7 +469,7 @@ export default function OrderForm() {
       await supabase.from('order_items').delete().eq('order_id', editingOrder.id);
       await supabase.from('order_items').insert(buildItemsPayload(editingOrder.id));
 
-      setMessage(`✅ הזמנה ${editingOrder.order_number} עודכנה בהצלחה!`);
+      setMessage(`הזמנה ${editingOrder.order_number} עודכנה בהצלחה!`);
       setEditingOrder(null);
       setSelectedCustomer('');
       setCustomerSearch('');
@@ -477,7 +477,7 @@ export default function OrderForm() {
       setNotes('');
       loadAllOrders();
     } catch {
-      setMessage('❌ שגיאה בעדכון ההזמנה');
+      setMessage('שגיאה בעדכון ההזמנה');
     } finally {
       setLoading(false);
     }
@@ -544,7 +544,7 @@ export default function OrderForm() {
       <div className="flex-shrink-0 bg-[var(--color-surface)] border-b border-[var(--color-border)] px-6 py-3">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-semibold text-[var(--color-text)]">
-            🥩 מערכת הזמנות בשר
+            מערכת הזמנות בשר
           </h1>
           <div className="flex items-center gap-3 text-sm">
             <span className="text-[var(--color-text-secondary)]">{user?.email}</span>
@@ -561,20 +561,20 @@ export default function OrderForm() {
             onClick={() => setShowOrdersList(!showOrdersList)}
             className="bg-[var(--color-accent)] text-white px-4 py-1.5 rounded text-sm font-medium hover:opacity-90 transition-opacity"
           >
-            📋 הזמנות קיימות
+            הזמנות קיימות
           </button>
           <button
             onClick={() => window.open('/warehouse', '_blank')}
             className="border border-[var(--color-border-strong)] text-[var(--color-text-secondary)] px-4 py-1.5 rounded text-sm font-medium hover:bg-[var(--color-accent-light)] transition-colors"
           >
-            🏭 דשבורד מחסן
+            דשבורד מחסן
           </button>
           {editingOrder && (
             <button
               onClick={cancelEdit}
               className="border border-[var(--color-danger)] text-[var(--color-danger)] px-4 py-1.5 rounded text-sm font-medium hover:bg-[#F8EAEA] transition-colors"
             >
-              ❌ בטל עריכה
+              בטל עריכה
             </button>
           )}
         </div>
@@ -583,9 +583,9 @@ export default function OrderForm() {
       {/* ── Feedback message ── */}
       {message && (
         <div className={`flex-shrink-0 px-6 py-2.5 text-sm font-medium border-b ${
-          message.includes('🎉') || message.includes('✅') || message.includes('בהצלחה')
+          message.includes('בהצלחה') || message.includes('נשלחה') || message.includes('עודכנה') || message.includes('נוסף')
             ? 'bg-[#E8F4EC] text-[#3D7A52] border-[#3D7A52]'
-            : message.includes('📝') || message.includes('📋')
+            : message.includes('עורך') || message.includes('הועתקו') || message.includes('פריטים')
             ? 'bg-[#EAF0F8] text-[#2D5A8E] border-[#2D5A8E]'
             : 'bg-[#F8EAEA] text-[#A63D3D] border-[#A63D3D]'
         }`}>
@@ -623,7 +623,7 @@ export default function OrderForm() {
                         : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     }`}
                   >
-                    {order.status === 'חדשה' ? '✏️ ערוך' : '🔒 במחסן'}
+                    {order.status === 'חדשה' ? 'ערוך' : 'במחסן'}
                   </button>
                 </div>
               ))
@@ -640,7 +640,7 @@ export default function OrderForm() {
 
               {/* Customer selection */}
               <div className="bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] p-4">
-                <h3 className="font-semibold text-[var(--color-text)] mb-3">🏪 בחירת לקוח</h3>
+                <h3 className="font-semibold text-[var(--color-text)] mb-3">בחירת לקוח</h3>
                 <div className="space-y-3">
                   <div className="relative customer-dropdown">
                     <input
@@ -685,7 +685,7 @@ export default function OrderForm() {
                     onClick={() => setShowAddCustomer(!showAddCustomer)}
                     className="border border-[var(--color-border-strong)] text-[var(--color-text-secondary)] px-3 py-1.5 rounded text-sm font-medium hover:bg-[var(--color-accent-light)] transition-colors"
                   >
-                    ➕ הוסף לקוח חדש
+                    הוסף לקוח חדש
                   </button>
                 </div>
 
@@ -709,7 +709,7 @@ export default function OrderForm() {
                     <div className="mt-3 flex gap-2">
                       <button type="button" onClick={addNewCustomer}
                         className="bg-[var(--color-accent)] text-white px-4 py-1.5 rounded text-sm font-medium hover:opacity-90 transition-opacity">
-                        💾 שמור לקוח
+                        שמור לקוח
                       </button>
                       <button type="button" onClick={() => setShowAddCustomer(false)}
                         className="border border-[var(--color-border-strong)] text-[var(--color-text-secondary)] px-4 py-1.5 rounded text-sm font-medium hover:bg-[var(--color-accent-light)] transition-colors">
@@ -759,7 +759,7 @@ export default function OrderForm() {
                                 onClick={() => cloneOrder(order)}
                                 className="mr-2 bg-[var(--color-accent)] text-white px-3 py-1 rounded text-sm font-medium hover:opacity-90 transition-opacity"
                               >
-                                📋 שכפל
+                                שכפל
                               </button>
                             </div>
                           ))}
@@ -776,7 +776,7 @@ export default function OrderForm() {
 
               {/* Delivery date */}
               <div className="bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] p-4">
-                <h3 className="font-semibold text-[var(--color-text)] mb-3">📅 תאריך אספקה</h3>
+                <h3 className="font-semibold text-[var(--color-text)] mb-3">תאריך אספקה</h3>
                 <input
                   type="date"
                   value={deliveryDate}
@@ -788,7 +788,7 @@ export default function OrderForm() {
 
               {/* Product catalog */}
               <div className="bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] p-4">
-                <h3 className="font-semibold text-[var(--color-text)] mb-3">🔍 חיפוש וסינון מוצרים</h3>
+                <h3 className="font-semibold text-[var(--color-text)] mb-3">חיפוש וסינון מוצרים</h3>
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div className="relative">
                     <Search className="absolute right-3 top-2.5 text-[var(--color-text-muted)]" size={18} />
@@ -825,7 +825,7 @@ export default function OrderForm() {
 
               {/* General notes */}
               <div className="bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] p-4">
-                <h3 className="font-semibold text-[var(--color-text)] mb-3">📝 הערות נוספות</h3>
+                <h3 className="font-semibold text-[var(--color-text)] mb-3">הערות נוספות</h3>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -843,7 +843,7 @@ export default function OrderForm() {
               {/* Order items header */}
               <div className="flex-shrink-0 flex justify-between items-center px-4 py-3 border-b border-[var(--color-border)]">
                 <h3 className="font-semibold text-[var(--color-text)] text-sm">
-                  🛒 פריטי ההזמנה ({orderItems.length})
+                  פריטי ההזמנה ({orderItems.length})
                 </h3>
                 {orderItems.length > 0 && (
                   <button
@@ -890,14 +890,14 @@ export default function OrderForm() {
                   }
                   className="w-full bg-[var(--color-accent)] text-white py-3 rounded-lg font-bold text-base hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity min-h-[48px]"
                 >
-                  {loading ? '⏳ מעדכן...' : editingOrder ? '💾 עדכן הזמנה' : '🚀 שליחת הזמנה'}
+                  {loading ? 'מעדכן...' : editingOrder ? 'עדכן הזמנה' : 'שליחת הזמנה'}
                 </button>
                 <button
                   type="button"
                   onClick={clearOrder}
                   className="w-full border border-[var(--color-danger)] text-[var(--color-danger)] py-2 rounded-lg font-medium hover:bg-[#F8EAEA] transition-colors text-sm"
                 >
-                  🗑️ נקה הזמנה
+                  נקה הזמנה
                 </button>
               </div>
 
@@ -962,11 +962,11 @@ export default function OrderForm() {
             <div className="p-5 border-t border-[var(--color-border)] flex gap-3">
               <button type="button" onClick={confirmAddProduct}
                 className="bg-[var(--color-accent)] text-white px-6 py-2.5 rounded-lg hover:opacity-90 transition-opacity font-bold flex-1">
-                ✅ הוסף להזמנה
+                הוסף להזמנה
               </button>
               <button type="button" onClick={() => setShowProductModal(false)}
                 className="border border-[var(--color-border-strong)] text-[var(--color-text-secondary)] px-6 py-2.5 rounded-lg hover:bg-[var(--color-accent-light)] transition-colors font-medium">
-                ❌ ביטול
+                ביטול
               </button>
             </div>
           </div>
