@@ -6,6 +6,7 @@ import { getSupabaseClient } from '@/lib/supabase';
 import { getItemWeightAndNotes } from '@/lib/orderUtils';
 import SplitLayout from '@/components/layout/SplitLayout';
 import StatusBadge from '@/components/agent/StatusBadge';
+import ProductCard from '@/components/agent/ProductCard';
 
 const supabase = getSupabaseClient();
 
@@ -811,22 +812,12 @@ export default function OrderForm() {
                 </div>
                 <div className="space-y-2">
                   {filteredProducts.map(product => (
-                    <div key={product.id} className="flex justify-between items-center p-3 border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-accent-light)] transition-colors">
-                      <div className="flex-1">
-                        <span className="font-medium text-[var(--color-text)]">{product.name}</span>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="bg-[var(--color-accent-light)] text-[var(--color-accent)] px-2 py-0.5 rounded text-xs font-medium">{product.category}</span>
-                          <span className="text-[var(--color-text-secondary)] text-xs">{product.unit || 'יחידה'}</span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => addProduct(product)}
-                        className="bg-[var(--color-accent)] text-white px-3 py-1.5 rounded text-sm font-medium hover:opacity-90 transition-opacity"
-                      >
-                        ⚙️ הגדר כמות
-                      </button>
-                    </div>
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onAdd={addProduct}
+                      isInOrder={orderItems.some(item => item.product_id === product.id)}
+                    />
                   ))}
                 </div>
               </div>
