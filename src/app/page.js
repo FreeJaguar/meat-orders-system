@@ -5,6 +5,7 @@ import { Search, Plus, Minus, Trash2 } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase';
 import { getItemWeightAndNotes } from '@/lib/orderUtils';
 import SplitLayout from '@/components/layout/SplitLayout';
+import StatusBadge from '@/components/agent/StatusBadge';
 
 const supabase = getSupabaseClient();
 
@@ -603,15 +604,7 @@ export default function OrderForm() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
                       <span className="font-semibold text-[var(--color-text)]">#{order.order_number}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        order.status === 'חדשה'   ? 'bg-blue-100 text-blue-800' :
-                        order.status === 'בטיפול' ? 'bg-yellow-100 text-yellow-800' :
-                        order.status === 'נשלחה'  ? 'bg-purple-100 text-purple-800' :
-                        order.status === 'הושלמה' ? 'bg-green-100 text-green-800' :
-                                                     'bg-red-100 text-red-800'
-                      }`}>
-                        {order.status}
-                      </span>
+                      <StatusBadge status={order.status} />
                     </div>
                     <p className="text-xs text-[var(--color-text-secondary)] mt-1">
                       <strong>{order.customers?.name}</strong> |{' '}
@@ -752,12 +745,7 @@ export default function OrderForm() {
                               <div className="flex-1 text-sm">
                                 <div className="flex items-center gap-2">
                                   <span className="font-semibold text-[var(--color-text)]">#{order.order_number}</span>
-                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                    order.status === 'חדשה'   ? 'bg-blue-100 text-blue-800' :
-                                    order.status === 'בטיפול' ? 'bg-yellow-100 text-yellow-800' :
-                                    order.status === 'הושלמה' ? 'bg-green-100 text-green-800' :
-                                                                 'bg-gray-100 text-gray-800'
-                                  }`}>{order.status}</span>
+                                  <StatusBadge status={order.status} />
                                 </div>
                                 <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
                                   אספקה: {new Date(order.delivery_date).toLocaleDateString('he-IL')} |{' '}
