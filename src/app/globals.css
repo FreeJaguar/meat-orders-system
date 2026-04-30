@@ -3,6 +3,25 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  --color-bg:              #F2EDE8;
+  --color-surface:         #FFFFFF;
+  --color-surface-alt:     #FAF7F3;
+
+  --color-border:          #DDD5CB;
+  --color-border-strong:   #C4B9AE;
+
+  --color-text:            #1C1917;
+  --color-text-secondary:  #6B6058;
+  --color-text-muted:      #9C8F84;
+
+  --color-accent:          #7B5E3A;
+  --color-accent-light:    #EDE4D8;
+
+  --color-success:         #3D7A52;
+  --color-danger:          #A63D3D;
+  --color-warning:         #8B6914;
+  --color-info:            #2D5A8E;
 }
 
 @theme inline {
