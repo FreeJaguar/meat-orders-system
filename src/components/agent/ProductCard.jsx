@@ -1,3 +1,5 @@
+'use client';
+
 export default function ProductCard({ product, onAdd, isInOrder }) {
   return (
     <div

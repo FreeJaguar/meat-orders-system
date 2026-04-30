@@ -1,3 +1,5 @@
+'use client';
+
 import { Trash2, Plus, Minus } from 'lucide-react';
 
 export default function OrderItemRow({ item, index, onRemove, onQuantityChange, onFieldChange }) {
