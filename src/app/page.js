@@ -572,7 +572,7 @@ export default function OrderForm() {
           {editingOrder && (
             <button
               onClick={cancelEdit}
-              className="border border-[var(--color-danger)] text-[var(--color-danger)] px-4 py-1.5 rounded text-sm font-medium hover:bg-[#F8EAEA] transition-colors"
+              className="border border-[var(--color-danger)] text-[var(--color-danger)] px-4 py-1.5 rounded text-sm font-medium hover:bg-[var(--color-danger-light)] transition-colors"
             >
               בטל עריכה
             </button>
@@ -585,7 +585,7 @@ export default function OrderForm() {
         <div className={`flex-shrink-0 px-6 py-2.5 text-sm font-medium border-b ${
           message.includes('בהצלחה') || message.includes('נשלחה') || message.includes('עודכנה') || message.includes('נוסף')
             ? 'bg-[#E8F4EC] text-[#3D7A52] border-[#3D7A52]'
-            : message.includes('עורך') || message.includes('הועתקו') || message.includes('פריטים')
+            : message.includes('עורך הזמנה') || message.includes('הועתקו') || message.includes('פריטים')
             ? 'bg-[#EAF0F8] text-[#2D5A8E] border-[#2D5A8E]'
             : 'bg-[#F8EAEA] text-[#A63D3D] border-[#A63D3D]'
         }`}>
@@ -620,7 +620,7 @@ export default function OrderForm() {
                     className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
                       order.status === 'חדשה'
                         ? 'bg-[var(--color-accent)] text-white hover:opacity-90'
-                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-[var(--color-border)] text-[var(--color-text-muted)] cursor-not-allowed'
                     }`}
                   >
                     {order.status === 'חדשה' ? 'ערוך' : 'במחסן'}
@@ -849,7 +849,7 @@ export default function OrderForm() {
                   <button
                     type="button"
                     onClick={clearItems}
-                    className="text-xs text-[var(--color-danger)] border border-[var(--color-danger)] px-2.5 py-1 rounded hover:bg-[#F8EAEA] transition-colors"
+                    className="text-xs text-[var(--color-danger)] border border-[var(--color-danger)] px-2.5 py-1 rounded hover:bg-[var(--color-danger-light)] transition-colors"
                   >
                     נקה פריטים
                   </button>
@@ -895,7 +895,7 @@ export default function OrderForm() {
                 <button
                   type="button"
                   onClick={clearOrder}
-                  className="w-full border border-[var(--color-danger)] text-[var(--color-danger)] py-2 rounded-lg font-medium hover:bg-[#F8EAEA] transition-colors text-sm"
+                  className="w-full border border-[var(--color-danger)] text-[var(--color-danger)] py-2 rounded-lg font-medium hover:bg-[var(--color-danger-light)] transition-colors text-sm"
                 >
                   נקה הזמנה
                 </button>

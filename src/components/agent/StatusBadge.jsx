@@ -1,3 +1,5 @@
+'use client';
+
 const STATUS_STYLES = {
   'חדשה':   { bg: '#EAF0F8', text: '#2D5A8E' },
   'בטיפול': { bg: '#FDF3DC', text: '#8B6914' },
