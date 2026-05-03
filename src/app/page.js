@@ -431,7 +431,10 @@ export default function OrderForm() {
         .select()
         .single();
 
-      await supabase.from('order_items').insert(buildItemsPayload(orderData.id));
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(buildItemsPayload(orderData.id));
+      if (itemsError) console.error('[order_items insert]', itemsError);
 
       // Clear draft only after confirmed success
       try { localStorage.removeItem(DRAFT_KEY); } catch {}
