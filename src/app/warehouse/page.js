@@ -81,6 +81,13 @@ export default function WarehouseDashboard() {
         }
         loadOrders();
       })
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'order_items'
+      }, () => {
+        loadOrders();
+      })
       .subscribe();
 
     return () => supabase.removeChannel(channel);
