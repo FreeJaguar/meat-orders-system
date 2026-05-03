@@ -1,9 +1,13 @@
 'use client'
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Plus, Minus, Trash2 } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase';
 import { getItemWeightAndNotes } from '@/lib/orderUtils';
+import SplitLayout from '@/components/layout/SplitLayout';
+import StatusBadge from '@/components/agent/StatusBadge';
+import ProductCard from '@/components/agent/ProductCard';
+import OrderItemRow from '@/components/agent/OrderItemRow';
 
 const supabase = getSupabaseClient();
 
@@ -230,7 +234,7 @@ export default function OrderForm() {
   // ─── Customer actions ────────────────────────────────────────────────────
   const addNewCustomer = async () => {
     if (!newCustomer.name) {
-      setMessage('❌ יש למלא את שם הלקוח');
+      setMessage('יש למלא את שם הלקוח');
       return;
     }
     try {
@@ -250,9 +254,9 @@ export default function OrderForm() {
       setCustomerSearch(`${data.name}${data.code ? ` (${data.code})` : ''}`);
       setNewCustomer({ name: '', code: '', phone: '', address: '', contact_person: '' });
       setShowAddCustomer(false);
-      setMessage(`✅ לקוח ${data.name} נוסף בהצלחה ונבחר!`);
+      setMessage(`לקוח ${data.name} נוסף בהצלחה ונבחר!`);
     } catch {
-      setMessage('❌ שגיאה בהוספת הלקוח');
+      setMessage('שגיאה בהוספת הלקוח');
     }
   };
 
@@ -279,13 +283,13 @@ export default function OrderForm() {
     tomorrow.setDate(tomorrow.getDate() + 1);
     setDeliveryDate(tomorrow.toISOString().split('T')[0]);
     setShowCustomerHistory(false);
-    setMessage(`📋 פריטים הועתקו מהזמנה ${order.order_number} — עדכן ובדוק לפני שליחה`);
+    setMessage(`פריטים הועתקו מהזמנה ${order.order_number} — עדכן ובדוק לפני שליחה`);
   };
 
   // ─── Edit existing order ──────────────────────────────────────────────────
   const loadOrderForEdit = (order) => {
     if (['בטיפול', 'נשלחה', 'הושלמה'].includes(order.status)) {
-      setMessage('❌ לא ניתן לערוך הזמנה שכבר בטיפול במחסן');
+      setMessage('לא ניתן לערוך הזמנה שכבר בטיפול במחסן');
       return;
     }
     setEditingOrder(order);
@@ -308,7 +312,7 @@ export default function OrderForm() {
 
     setOrderItems(items);
     setShowOrdersList(false);
-    setMessage(`📝 עורך הזמנה ${order.order_number} (סטטוס: ${order.status})`);
+    setMessage(`עורך הזמנה ${order.order_number} (סטטוס: ${order.status})`);
   };
 
   // ─── Product modal ────────────────────────────────────────────────────────
@@ -381,14 +385,14 @@ export default function OrderForm() {
   // ─── Shared validation ────────────────────────────────────────────────────
   const validateForm = () => {
     if (!selectedCustomer || orderItems.length === 0) {
-      setMessage('❌ יש למלא את כל השדות הנדרשים');
+      setMessage('יש למלא את כל השדות הנדרשים');
       return false;
     }
     const hasInvalidItems = orderItems.some(
       item => item.quantity <= 0 && (!item.weight || !item.weight.trim())
     );
     if (hasInvalidItems) {
-      setMessage('❌ כל פריט חייב לכלול כמות או משקל');
+      setMessage('כל פריט חייב לכלול כמות או משקל');
       return false;
     }
     return true;
@@ -432,7 +436,7 @@ export default function OrderForm() {
       // Clear draft only after confirmed success
       try { localStorage.removeItem(DRAFT_KEY); } catch {}
 
-      setMessage(`🎉 הזמנה ${orderNumber} נשלחה בהצלחה למחסן!`);
+      setMessage(`הזמנה ${orderNumber} נשלחה בהצלחה למחסן!`);
       setSelectedCustomer('');
       setCustomerSearch('');
       setOrderItems([]);
@@ -440,7 +444,7 @@ export default function OrderForm() {
       loadAllOrders();
       setTimeout(() => setMessage(''), 5000);
     } catch {
-      setMessage('❌ שגיאה בשליחת ההזמנה');
+      setMessage('שגיאה בשליחת ההזמנה');
     } finally {
       setLoading(false);
     }
@@ -465,7 +469,7 @@ export default function OrderForm() {
       await supabase.from('order_items').delete().eq('order_id', editingOrder.id);
       await supabase.from('order_items').insert(buildItemsPayload(editingOrder.id));
 
-      setMessage(`✅ הזמנה ${editingOrder.order_number} עודכנה בהצלחה!`);
+      setMessage(`הזמנה ${editingOrder.order_number} עודכנה בהצלחה!`);
       setEditingOrder(null);
       setSelectedCustomer('');
       setCustomerSearch('');
@@ -473,7 +477,7 @@ export default function OrderForm() {
       setNotes('');
       loadAllOrders();
     } catch {
-      setMessage('❌ שגיאה בעדכון ההזמנה');
+      setMessage('שגיאה בעדכון ההזמנה');
     } finally {
       setLoading(false);
     }
@@ -526,498 +530,449 @@ export default function OrderForm() {
   // ─── Auth loading guard ───────────────────────────────────────────────────
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="h-dvh flex items-center justify-center bg-[var(--color-bg)]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--color-accent)]"></div>
       </div>
     );
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="h-dvh overflow-hidden flex flex-col bg-[var(--color-bg)]">
 
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            🥩 מערכת הזמנות בשר
+      {/* ── Header ── */}
+      <div className="flex-shrink-0 bg-[var(--color-surface)] border-b border-[var(--color-border)] px-6 py-3">
+        <div className="flex items-center justify-between">
+          <h1 className="text-lg font-semibold text-[var(--color-text)]">
+            מערכת הזמנות בשר
           </h1>
-          <p className="text-gray-600">מערכת דיגיטלית לסוכן שטח</p>
-
-          {/* User info + sign-out */}
-          <div className="mt-2 flex justify-center items-center space-x-2 space-x-reverse text-sm text-gray-500">
-            <span>{user?.email}</span>
+          <div className="flex items-center gap-3 text-sm">
+            <span className="text-[var(--color-text-secondary)]">{user?.email}</span>
             <button
               onClick={handleSignOut}
-              className="text-red-500 hover:text-red-700 font-medium underline"
+              className="text-[var(--color-danger)] hover:underline font-medium"
             >
               התנתק
             </button>
           </div>
+        </div>
+        <div className="flex gap-2 mt-2 flex-wrap">
+          <button
+            onClick={() => setShowOrdersList(!showOrdersList)}
+            className="bg-[var(--color-accent)] text-white px-4 py-1.5 rounded text-sm font-medium hover:opacity-90 transition-opacity"
+          >
+            הזמנות קיימות
+          </button>
+          <button
+            onClick={() => window.open('/warehouse', '_blank')}
+            className="border border-[var(--color-border-strong)] text-[var(--color-text-secondary)] px-4 py-1.5 rounded text-sm font-medium hover:bg-[var(--color-accent-light)] transition-colors"
+          >
+            דשבורד מחסן
+          </button>
+          {editingOrder && (
+            <button
+              onClick={cancelEdit}
+              className="border border-[var(--color-danger)] text-[var(--color-danger)] px-4 py-1.5 rounded text-sm font-medium hover:bg-[var(--color-danger-light)] transition-colors"
+            >
+              בטל עריכה
+            </button>
+          )}
+        </div>
+      </div>
 
-          <div className="mt-4 flex justify-center space-x-4 space-x-reverse">
-            <button
-              onClick={() => setShowOrdersList(!showOrdersList)}
-              className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors font-medium"
-            >
-              📋 הזמנות קיימות
-            </button>
-            <button
-              onClick={() => window.open('/warehouse', '_blank')}
-              className="bg-purple-500 text-white px-6 py-2 rounded-lg hover:bg-purple-600 transition-colors font-medium"
-            >
-              🏭 דשבורד מחסן
-            </button>
-            {editingOrder && (
-              <button
-                onClick={cancelEdit}
-                className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors font-medium"
-              >
-                ❌ בטל עריכה
-              </button>
+      {/* ── Feedback message ── */}
+      {message && (
+        <div className={`flex-shrink-0 px-6 py-2.5 text-sm font-medium border-b ${
+          message.includes('בהצלחה') || message.includes('נשלחה') || message.includes('עודכנה') || message.includes('נוסף')
+            ? 'bg-[#E8F4EC] text-[#3D7A52] border-[#3D7A52]'
+            : message.includes('עורך הזמנה') || message.includes('הועתקו') || message.includes('פריטים')
+            ? 'bg-[#EAF0F8] text-[#2D5A8E] border-[#2D5A8E]'
+            : 'bg-[#F8EAEA] text-[#A63D3D] border-[#A63D3D]'
+        }`}>
+          {message}
+        </div>
+      )}
+
+      {/* ── Orders list panel (collapsible) ── */}
+      {showOrdersList && (
+        <div className="flex-shrink-0 bg-[var(--color-surface)] border-b border-[var(--color-border)] px-6 py-4 max-h-72 overflow-y-auto">
+          <h3 className="font-semibold text-[var(--color-text)] mb-3">הזמנות קיימות לעריכה</h3>
+          <div className="space-y-2">
+            {allOrders.length === 0 ? (
+              <p className="text-[var(--color-text-muted)] text-center py-4">אין הזמנות להצגה</p>
+            ) : (
+              allOrders.map(order => (
+                <div key={order.id} className="flex justify-between items-center p-3 border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-accent-light)] transition-colors">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <span className="font-semibold text-[var(--color-text)]">#{order.order_number}</span>
+                      <StatusBadge status={order.status} />
+                    </div>
+                    <p className="text-xs text-[var(--color-text-secondary)] mt-1">
+                      <strong>{order.customers?.name}</strong> |{' '}
+                      {new Date(order.delivery_date).toLocaleDateString('he-IL')} |{' '}
+                      {order.order_items?.length || 0} פריטים
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => loadOrderForEdit(order)}
+                    disabled={order.status !== 'חדשה'}
+                    className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                      order.status === 'חדשה'
+                        ? 'bg-[var(--color-accent)] text-white hover:opacity-90'
+                        : 'bg-[var(--color-border)] text-[var(--color-text-muted)] cursor-not-allowed'
+                    }`}
+                  >
+                    {order.status === 'חדשה' ? 'ערוך' : 'במחסן'}
+                  </button>
+                </div>
+              ))
             )}
           </div>
         </div>
+      )}
 
-        {/* Feedback message */}
-        {message && (
-          <div className={`p-4 mb-6 rounded-lg border font-medium ${
-            message.includes('🎉') || message.includes('✅') || message.includes('בהצלחה')
-              ? 'bg-green-100 text-green-800 border-green-300'
-              : message.includes('📝') || message.includes('📋')
-              ? 'bg-blue-100 text-blue-800 border-blue-300'
-              : 'bg-red-100 text-red-800 border-red-300'
-          }`}>
-            {message}
-          </div>
-        )}
+      {/* ── Split layout ── */}
+      <form onSubmit={editingOrder ? updateOrder : submitOrder} className="flex-1 overflow-hidden flex flex-col">
+        <SplitLayout
+          leftPanel={
+            <div className="p-4 space-y-4">
 
-        {/* Existing orders panel (edit mode) */}
-        {showOrdersList && (
-          <div className="bg-white p-6 rounded-lg shadow-lg mb-6 border">
-            <h3 className="font-bold text-gray-800 mb-4 text-lg">הזמנות קיימות לעריכה</h3>
-            <div className="max-h-96 overflow-y-auto space-y-3">
-              {allOrders.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">אין הזמנות להצגה</p>
-              ) : (
-                allOrders.map(order => (
-                  <div key={order.id} className="flex justify-between items-center p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 space-x-reverse">
-                        <span className="font-bold text-gray-800">#{order.order_number}</span>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          order.status === 'חדשה'   ? 'bg-blue-100 text-blue-800' :
-                          order.status === 'בטיפול' ? 'bg-yellow-100 text-yellow-800' :
-                          order.status === 'נשלחה'  ? 'bg-purple-100 text-purple-800' :
-                          order.status === 'הושלמה' ? 'bg-green-100 text-green-800' :
-                                                       'bg-red-100 text-red-800'
-                        }`}>
-                          {order.status}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">
-                        <strong>{order.customers?.name}</strong> |{' '}
-                        {new Date(order.delivery_date).toLocaleDateString('he-IL')} |{' '}
-                        {order.order_items?.length || 0} פריטים
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => loadOrderForEdit(order)}
-                      disabled={order.status !== 'חדשה'}
-                      className={`px-4 py-2 rounded font-medium transition-colors ${
-                        order.status === 'חדשה'
-                          ? 'bg-blue-500 text-white hover:bg-blue-600'
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      }`}
-                    >
-                      {order.status === 'חדשה' ? '✏️ ערוך' : '🔒 במחסן'}
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
-        <form onSubmit={editingOrder ? updateOrder : submitOrder} className="space-y-6">
-
-          {/* Customer selection */}
-          <div className="bg-white p-6 rounded-lg shadow-lg border">
-            <h3 className="font-bold text-gray-800 mb-4 text-lg">🏪 בחירת לקוח</h3>
-            <div className="space-y-4">
-              <div className="relative customer-dropdown">
-                <input
-                  type="text"
-                  value={customerSearch}
-                  onChange={(e) => {
-                    setCustomerSearch(e.target.value);
-                    setShowCustomerDropdown(true);
-                  }}
-                  onFocus={() => setShowCustomerDropdown(true)}
-                  placeholder="חפש לקוח..."
-                  className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
-                />
-                {showCustomerDropdown && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                    {customers
-                      .filter(c =>
-                        c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-                        (c.code && c.code.toLowerCase().includes(customerSearch.toLowerCase()))
-                      )
-                      .map(customer => (
-                        <div
-                          key={customer.id}
-                          onClick={() => {
-                            setSelectedCustomer(customer.id);
-                            setCustomerSearch(`${customer.name}${customer.code ? ` (${customer.code})` : ''}`);
-                            setShowCustomerDropdown(false);
-                          }}
-                          className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                        >
-                          <span className="text-gray-800">
-                            {customer.name}{customer.code ? ` (${customer.code})` : ''}
-                          </span>
-                        </div>
-                      ))
-                    }
-                  </div>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowAddCustomer(!showAddCustomer)}
-                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors font-medium"
-              >
-                ➕ הוסף לקוח חדש
-              </button>
-            </div>
-
-            {/* Add customer form */}
-            {showAddCustomer && (
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
-                <h4 className="font-bold text-gray-800 mb-3">הוספת לקוח חדש</h4>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <input type="text" placeholder="שם הלקוח *" value={newCustomer.name}
-                    onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})}
-                    className="border-2 border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium" required />
-                  <input type="text" placeholder="קוד לקוח (אופציונלי)" value={newCustomer.code}
-                    onChange={(e) => setNewCustomer({...newCustomer, code: e.target.value})}
-                    className="border-2 border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium" />
-                  <input type="text" placeholder="טלפון" value={newCustomer.phone}
-                    onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
-                    className="border-2 border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium" />
-                  <input type="text" placeholder="כתובת" value={newCustomer.address}
-                    onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})}
-                    className="border-2 border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium" />
-                </div>
-                <div className="mt-4 flex space-x-2 space-x-reverse">
-                  <button type="button" onClick={addNewCustomer}
-                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors font-medium">
-                    💾 שמור לקוח
-                  </button>
-                  <button type="button" onClick={() => setShowAddCustomer(false)}
-                    className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors font-medium">
-                    ביטול
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Customer order history */}
-            {selectedCustomer && (
-              <div className="mt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowCustomerHistory(!showCustomerHistory)}
-                  className="flex items-center space-x-2 space-x-reverse text-sm font-medium text-blue-600 hover:text-blue-800"
-                >
-                  <span>{showCustomerHistory ? '▲' : '▼'}</span>
-                  <span>
-                    {loadingHistory
-                      ? 'טוען היסטוריה...'
-                      : `היסטוריית הזמנות (${customerOrders.length})`}
-                  </span>
-                </button>
-
-                {showCustomerHistory && customerOrders.length > 0 && (
-                  <div className="mt-3 border-2 border-gray-200 rounded-lg overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                      <p className="text-xs text-gray-500 font-medium">
-                        20 הזמנות אחרונות — לחץ &quot;שכפל&quot; לטעון פריטים לטופס
-                      </p>
-                    </div>
-                    <div className="max-h-72 overflow-y-auto divide-y divide-gray-100">
-                      {customerOrders.map(order => (
-                        <div key={order.id} className="flex items-center justify-between px-4 py-3 hover:bg-blue-50">
-                          <div className="flex-1 text-sm">
-                            <div className="flex items-center space-x-2 space-x-reverse">
-                              <span className="font-bold text-gray-800">#{order.order_number}</span>
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                order.status === 'חדשה'   ? 'bg-blue-100 text-blue-800' :
-                                order.status === 'בטיפול' ? 'bg-yellow-100 text-yellow-800' :
-                                order.status === 'הושלמה' ? 'bg-green-100 text-green-800' :
-                                                             'bg-gray-100 text-gray-800'
-                              }`}>{order.status}</span>
+              {/* Customer selection */}
+              <div className="bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] p-4">
+                <h3 className="font-semibold text-[var(--color-text)] mb-3">בחירת לקוח</h3>
+                <div className="space-y-3">
+                  <div className="relative customer-dropdown">
+                    <input
+                      type="text"
+                      value={customerSearch}
+                      onChange={(e) => {
+                        setCustomerSearch(e.target.value);
+                        setShowCustomerDropdown(true);
+                      }}
+                      onFocus={() => setShowCustomerDropdown(true)}
+                      placeholder="חפש לקוח..."
+                      className="w-full border border-[var(--color-border)] rounded-lg px-4 py-2.5 focus:border-[var(--color-accent)] focus:outline-none text-[var(--color-text)] bg-[var(--color-surface)] placeholder-[var(--color-text-muted)]"
+                    />
+                    {showCustomerDropdown && (
+                      <div className="absolute z-10 w-full mt-1 bg-[var(--color-surface)] border border-[var(--color-border-strong)] rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {customers
+                          .filter(c =>
+                            c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+                            (c.code && c.code.toLowerCase().includes(customerSearch.toLowerCase()))
+                          )
+                          .map(customer => (
+                            <div
+                              key={customer.id}
+                              onClick={() => {
+                                setSelectedCustomer(customer.id);
+                                setCustomerSearch(`${customer.name}${customer.code ? ` (${customer.code})` : ''}`);
+                                setShowCustomerDropdown(false);
+                              }}
+                              className="p-3 hover:bg-[var(--color-accent-light)] cursor-pointer border-b border-[var(--color-border)] last:border-b-0"
+                            >
+                              <span className="text-[var(--color-text)]">
+                                {customer.name}{customer.code ? ` (${customer.code})` : ''}
+                              </span>
                             </div>
-                            <p className="text-gray-500 mt-0.5">
-                              אספקה: {new Date(order.delivery_date).toLocaleDateString('he-IL')} |{' '}
-                              {order.order_items?.length || 0} פריטים
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => cloneOrder(order)}
-                            className="mr-3 bg-orange-500 text-white px-3 py-1.5 rounded-lg hover:bg-orange-600 transition-colors text-sm font-bold"
-                          >
-                            📋 שכפל
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {showCustomerHistory && customerOrders.length === 0 && !loadingHistory && (
-                  <p className="mt-2 text-sm text-gray-400">אין היסטוריית הזמנות ללקוח זה</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Delivery date */}
-          <div className="bg-white p-6 rounded-lg shadow-lg border">
-            <h3 className="font-bold text-gray-800 mb-4 text-lg">📅 תאריך אספקה</h3>
-            <input
-              type="date"
-              value={deliveryDate}
-              onChange={(e) => setDeliveryDate(e.target.value)}
-              className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
-              required
-            />
-          </div>
-
-          {/* Product search + catalog */}
-          <div className="bg-white p-6 rounded-lg shadow-lg border">
-            <h3 className="font-bold text-gray-800 mb-4 text-lg">🔍 חיפוש וסינון מוצרים</h3>
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
-              <div className="relative">
-                <Search className="absolute right-3 top-3 text-gray-400" size={20} />
-                <input
-                  type="text"
-                  placeholder="חפש מוצר לפי שם..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-12 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
-                />
-              </div>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
-              >
-                <option value="">כל הקטגוריות</option>
-                {categories.map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-            </div>
-            <div className="max-h-96 overflow-y-auto grid gap-2">
-              {filteredProducts.map(product => (
-                <div key={product.id} className="flex justify-between items-center p-3 border rounded-lg hover:bg-blue-50 transition-colors">
-                  <div className="flex-1">
-                    <span className="font-medium text-gray-800">{product.name}</span>
-                    <div className="text-sm text-gray-600">
-                      <span className="bg-blue-100 px-2 py-1 rounded mr-2 text-blue-800 font-medium">{product.category}</span>
-                      <span className="text-gray-700">{product.unit || 'יחידה'}</span>
-                    </div>
+                          ))
+                        }
+                      </div>
+                    )}
                   </div>
                   <button
                     type="button"
-                    onClick={() => addProduct(product)}
-                    className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition-colors font-medium"
+                    onClick={() => setShowAddCustomer(!showAddCustomer)}
+                    className="border border-[var(--color-border-strong)] text-[var(--color-text-secondary)] px-3 py-1.5 rounded text-sm font-medium hover:bg-[var(--color-accent-light)] transition-colors"
                   >
-                    ⚙️ הגדר כמות
+                    הוסף לקוח חדש
                   </button>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Order items */}
-          {orderItems.length > 0 && (
-            <div className="bg-white p-6 rounded-lg shadow-lg border">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-gray-800 text-lg">🛒 פריטי ההזמנה ({orderItems.length})</h3>
-                <button
-                  type="button"
-                  onClick={clearItems}
-                  className="text-sm text-red-500 hover:text-red-700 font-medium border border-red-300 hover:border-red-500 px-3 py-1 rounded transition-colors"
-                >
-                  נקה פריטים
-                </button>
-              </div>
-              <div className="space-y-4">
-                {orderItems.map((item, index) => (
-                  <div key={item.product_id} className="p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex-1">
-                        <div className="font-bold text-gray-800">{item.product_name}</div>
-                        <div className="text-sm text-blue-600 font-medium">{item.category}</div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeItem(index)}
-                        className="text-red-500 hover:text-red-700 font-medium"
-                      >
-                        <Trash2 size={18} />
+                {showAddCustomer && (
+                  <div className="mt-4 p-3 bg-[var(--color-surface-alt)] rounded-lg border border-[var(--color-border)]">
+                    <h4 className="font-semibold text-[var(--color-text)] mb-3 text-sm">הוספת לקוח חדש</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <input type="text" placeholder="שם הלקוח *" value={newCustomer.name}
+                        onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})}
+                        className="border border-[var(--color-border)] rounded px-3 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none text-[var(--color-text)] bg-[var(--color-surface)]" required />
+                      <input type="text" placeholder="קוד לקוח (אופציונלי)" value={newCustomer.code}
+                        onChange={(e) => setNewCustomer({...newCustomer, code: e.target.value})}
+                        className="border border-[var(--color-border)] rounded px-3 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none text-[var(--color-text)] bg-[var(--color-surface)]" />
+                      <input type="text" placeholder="טלפון" value={newCustomer.phone}
+                        onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
+                        className="border border-[var(--color-border)] rounded px-3 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none text-[var(--color-text)] bg-[var(--color-surface)]" />
+                      <input type="text" placeholder="כתובת" value={newCustomer.address}
+                        onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})}
+                        className="border border-[var(--color-border)] rounded px-3 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none text-[var(--color-text)] bg-[var(--color-surface)]" />
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <button type="button" onClick={addNewCustomer}
+                        className="bg-[var(--color-accent)] text-white px-4 py-1.5 rounded text-sm font-medium hover:opacity-90 transition-opacity">
+                        שמור לקוח
+                      </button>
+                      <button type="button" onClick={() => setShowAddCustomer(false)}
+                        className="border border-[var(--color-border-strong)] text-[var(--color-text-secondary)] px-4 py-1.5 rounded text-sm font-medium hover:bg-[var(--color-accent-light)] transition-colors">
+                        ביטול
                       </button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">כמות</label>
-                        <div className="flex items-center space-x-2 space-x-reverse">
-                          <button type="button"
-                            onClick={() => updateQuantity(index, item.quantity - 1)}
-                            className="w-8 h-8 bg-red-500 text-white rounded-full hover:bg-red-600 flex items-center justify-center font-bold">
-                            <Minus size={16} />
-                          </button>
-                          <input type="number" value={item.quantity}
-                            onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 0)}
-                            className="w-16 text-center border-2 border-gray-300 rounded px-2 py-1 text-gray-800 bg-white font-bold"
-                            min="0" />
-                          <button type="button"
-                            onClick={() => updateQuantity(index, item.quantity + 1)}
-                            className="w-8 h-8 bg-green-500 text-white rounded-full hover:bg-green-600 flex items-center justify-center font-bold">
-                            <Plus size={16} />
-                          </button>
+                  </div>
+                )}
+
+                {selectedCustomer && (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomerHistory(!showCustomerHistory)}
+                      className="flex items-center gap-2 text-sm font-medium text-[var(--color-accent)] hover:opacity-80"
+                    >
+                      <span>{showCustomerHistory ? '▲' : '▼'}</span>
+                      <span>
+                        {loadingHistory
+                          ? 'טוען היסטוריה...'
+                          : `היסטוריית הזמנות (${customerOrders.length})`}
+                      </span>
+                    </button>
+
+                    {showCustomerHistory && customerOrders.length > 0 && (
+                      <div className="mt-2 border border-[var(--color-border)] rounded-lg overflow-hidden">
+                        <div className="bg-[var(--color-surface-alt)] px-4 py-2 border-b border-[var(--color-border)]">
+                          <p className="text-xs text-[var(--color-text-muted)]">
+                            20 הזמנות אחרונות — לחץ &quot;שכפל&quot; לטעון פריטים לטופס
+                          </p>
+                        </div>
+                        <div className="max-h-64 overflow-y-auto divide-y divide-[var(--color-border)]">
+                          {customerOrders.map(order => (
+                            <div key={order.id} className="flex items-center justify-between px-4 py-2.5 hover:bg-[var(--color-accent-light)]">
+                              <div className="flex-1 text-sm">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-[var(--color-text)]">#{order.order_number}</span>
+                                  <StatusBadge status={order.status} />
+                                </div>
+                                <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
+                                  אספקה: {new Date(order.delivery_date).toLocaleDateString('he-IL')} |{' '}
+                                  {order.order_items?.length || 0} פריטים
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => cloneOrder(order)}
+                                className="mr-2 bg-[var(--color-accent)] text-white px-3 py-1 rounded text-sm font-medium hover:opacity-90 transition-opacity"
+                              >
+                                שכפל
+                              </button>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                      <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">משקל</label>
-                        <input type="text" value={item.weight || ''}
-                          onChange={(e) => updateItemField(index, 'weight', e.target.value)}
-                          placeholder='כמה ק"ג?'
-                          className="w-full border-2 border-gray-300 rounded px-3 py-1 text-sm focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">הערות</label>
-                        <input type="text" value={item.notes || ''}
-                          onChange={(e) => updateItemField(index, 'notes', e.target.value)}
-                          placeholder="הערות למוצר..."
-                          className="w-full border-2 border-gray-300 rounded px-3 py-1 text-sm focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium" />
-                      </div>
-                    </div>
+                    )}
+
+                    {showCustomerHistory && customerOrders.length === 0 && !loadingHistory && (
+                      <p className="mt-2 text-sm text-[var(--color-text-muted)]">אין היסטוריית הזמנות ללקוח זה</p>
+                    )}
                   </div>
-                ))}
+                )}
               </div>
+
+              {/* Delivery date */}
+              <div className="bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] p-4">
+                <h3 className="font-semibold text-[var(--color-text)] mb-3">תאריך אספקה</h3>
+                <input
+                  type="date"
+                  value={deliveryDate}
+                  onChange={(e) => setDeliveryDate(e.target.value)}
+                  className="w-full border border-[var(--color-border)] rounded-lg px-4 py-2.5 focus:border-[var(--color-accent)] focus:outline-none text-[var(--color-text)] bg-[var(--color-surface)]"
+                  required
+                />
+              </div>
+
+              {/* Product catalog */}
+              <div className="bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] p-4">
+                <h3 className="font-semibold text-[var(--color-text)] mb-3">חיפוש וסינון מוצרים</h3>
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div className="relative">
+                    <Search className="absolute right-3 top-2.5 text-[var(--color-text-muted)]" size={18} />
+                    <input
+                      type="text"
+                      placeholder="חפש מוצר לפי שם..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full border border-[var(--color-border)] rounded-lg px-4 py-2.5 pr-10 focus:border-[var(--color-accent)] focus:outline-none text-[var(--color-text)] bg-[var(--color-surface)] placeholder-[var(--color-text-muted)]"
+                    />
+                  </div>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full border border-[var(--color-border)] rounded-lg px-4 py-2.5 focus:border-[var(--color-accent)] focus:outline-none text-[var(--color-text)] bg-[var(--color-surface)]"
+                  >
+                    <option value="">כל הקטגוריות</option>
+                    {categories.map(category => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  {filteredProducts.map(product => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onAdd={addProduct}
+                      isInOrder={orderItems.some(item => item.product_id === product.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* General notes */}
+              <div className="bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] p-4">
+                <h3 className="font-semibold text-[var(--color-text)] mb-3">הערות נוספות</h3>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="הערות כלליות להזמנה..."
+                  className="w-full border border-[var(--color-border)] rounded-lg px-4 py-2.5 focus:border-[var(--color-accent)] focus:outline-none text-[var(--color-text)] bg-[var(--color-surface)] placeholder-[var(--color-text-muted)] resize-none"
+                  rows="3"
+                />
+              </div>
+
             </div>
-          )}
+          }
+          rightPanel={
+            <div className="h-full flex flex-col">
 
-          {/* General notes */}
-          <div className="bg-white p-6 rounded-lg shadow-lg border">
-            <h3 className="font-bold text-gray-800 mb-4 text-lg">📝 הערות נוספות</h3>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="הערות כלליות להזמנה..."
-              className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium"
-              rows="4"
-            />
-          </div>
-
-          {/* Submit */}
-          <div className="bg-white p-6 rounded-lg shadow-lg border">
-            <div className="flex flex-col gap-3">
-              <button
-                type="submit"
-                disabled={
-                  loading || !selectedCustomer || orderItems.length === 0 ||
-                  orderItems.some(item => item.quantity <= 0 && (!item.weight || !item.weight.trim()))
-                }
-                className="w-full bg-green-500 text-white py-4 rounded-lg text-xl font-bold hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-              >
-                {loading ? '⏳ מעדכן...' : editingOrder ? '💾 עדכן הזמנה' : '🚀 שליחת הזמנה'}
-              </button>
-              <button
-                type="button"
-                onClick={clearOrder}
-                className="w-full border-2 border-red-400 text-red-600 py-2 rounded-lg font-medium hover:bg-red-50 transition-colors"
-              >
-                🗑️ נקה הזמנה
-              </button>
-            </div>
-          </div>
-        </form>
-
-        {/* Product quantity modal */}
-        {showProductModal && selectedProduct && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-md w-full border-4 border-gray-300">
-              <div className="p-6 border-b-2 border-gray-200">
-                <h3 className="text-xl font-bold text-gray-800">
-                  הגדרת כמות — {selectedProduct.name}
+              {/* Order items header */}
+              <div className="flex-shrink-0 flex justify-between items-center px-4 py-3 border-b border-[var(--color-border)]">
+                <h3 className="font-semibold text-[var(--color-text)] text-sm">
+                  פריטי ההזמנה ({orderItems.length})
                 </h3>
+                {orderItems.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearItems}
+                    className="text-xs text-[var(--color-danger)] border border-[var(--color-danger)] px-2.5 py-1 rounded hover:bg-[var(--color-danger-light)] transition-colors"
+                  >
+                    נקה פריטים
+                  </button>
+                )}
               </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">כמות</label>
-                  <div className="flex items-center space-x-2 space-x-reverse">
-                    <button type="button"
-                      onClick={() => {
-                        const q = Math.max(0, tempProduct.quantity - 1);
-                        setTempProduct({ ...tempProduct, quantity: q, weight: q > 0 ? '' : tempProduct.weight });
-                      }}
-                      className="w-8 h-8 bg-red-500 text-white rounded-full hover:bg-red-600 flex items-center justify-center font-bold">-</button>
-                    <input type="number" value={tempProduct.quantity}
-                      onChange={(e) => {
-                        const q = parseInt(e.target.value) || 0;
-                        setTempProduct({ ...tempProduct, quantity: q, weight: q > 0 ? '' : tempProduct.weight });
-                      }}
-                      className="w-20 text-center border-2 border-gray-300 rounded px-2 py-1 text-gray-800 bg-white font-bold"
-                      min="0" />
-                    <button type="button"
-                      onClick={() => setTempProduct({ ...tempProduct, quantity: tempProduct.quantity + 1, weight: '' })}
-                      className="w-8 h-8 bg-green-500 text-white rounded-full hover:bg-green-600 flex items-center justify-center font-bold">+</button>
-                    <span className="text-sm text-gray-600 mr-2 font-medium">
-                      {selectedProduct.unit === 'ק"ג' ? 'קר׳' : selectedProduct.unit}
-                    </span>
+
+              {/* Scrollable order items */}
+              <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                {orderItems.length === 0 ? (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-[var(--color-text-muted)] text-sm text-center">
+                      אין פריטים בהזמנה
+                      <br />
+                      <span className="text-xs">בחר מוצרים מהקטלוג</span>
+                    </p>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">משקל</label>
-                  <input type="text" value={tempProduct.weight}
-                    onChange={(e) => setTempProduct({
-                      ...tempProduct,
-                      weight: e.target.value,
-                      quantity: e.target.value && e.target.value.trim() ? 0 : tempProduct.quantity
-                    })}
-                    placeholder='כמה ק"ג?'
-                    className="w-full border-2 border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">הערות</label>
-                  <input type="text" value={tempProduct.notes}
-                    onChange={(e) => setTempProduct({ ...tempProduct, notes: e.target.value })}
-                    placeholder="הערות למוצר..."
-                    className="w-full border-2 border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-gray-800 bg-white font-medium" />
+                ) : (
+                  orderItems.map((item, index) => (
+                    <OrderItemRow
+                      key={item.product_id}
+                      item={item}
+                      index={index}
+                      onRemove={removeItem}
+                      onQuantityChange={updateQuantity}
+                      onFieldChange={updateItemField}
+                    />
+                  ))
+                )}
+              </div>
+
+              {/* Fixed footer */}
+              <div className="flex-shrink-0 border-t border-[var(--color-border-strong)] bg-[var(--color-surface-alt)] p-4 space-y-2">
+                <button
+                  type="submit"
+                  disabled={
+                    loading || !selectedCustomer || orderItems.length === 0 ||
+                    orderItems.some(item => item.quantity <= 0 && (!item.weight || !item.weight.trim()))
+                  }
+                  className="w-full bg-[var(--color-accent)] text-white py-3 rounded-lg font-bold text-base hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity min-h-[48px]"
+                >
+                  {loading ? 'מעדכן...' : editingOrder ? 'עדכן הזמנה' : 'שליחת הזמנה'}
+                </button>
+                <button
+                  type="button"
+                  onClick={clearOrder}
+                  className="w-full border border-[var(--color-danger)] text-[var(--color-danger)] py-2 rounded-lg font-medium hover:bg-[var(--color-danger-light)] transition-colors text-sm"
+                >
+                  נקה הזמנה
+                </button>
+              </div>
+
+            </div>
+          }
+        />
+      </form>
+
+      {/* ── Product quantity modal ── */}
+      {showProductModal && selectedProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-[var(--color-surface)] rounded-lg max-w-md w-full border border-[var(--color-border-strong)]">
+            <div className="p-5 border-b border-[var(--color-border)]">
+              <h3 className="text-lg font-semibold text-[var(--color-text)]">
+                הגדרת כמות — {selectedProduct.name}
+              </h3>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">כמות</label>
+                <div className="flex items-center gap-2">
+                  <button type="button"
+                    onClick={() => {
+                      const q = Math.max(0, tempProduct.quantity - 1);
+                      setTempProduct({ ...tempProduct, quantity: q, weight: q > 0 ? '' : tempProduct.weight });
+                    }}
+                    className="w-8 h-8 bg-[var(--color-danger)] text-white rounded-full hover:opacity-80 flex items-center justify-center font-bold">-</button>
+                  <input type="number" value={tempProduct.quantity}
+                    onChange={(e) => {
+                      const q = parseInt(e.target.value) || 0;
+                      setTempProduct({ ...tempProduct, quantity: q, weight: q > 0 ? '' : tempProduct.weight });
+                    }}
+                    className="w-20 text-center border border-[var(--color-border)] rounded px-2 py-1.5 text-[var(--color-text)] bg-[var(--color-surface)] font-medium"
+                    min="0" />
+                  <button type="button"
+                    onClick={() => setTempProduct({ ...tempProduct, quantity: tempProduct.quantity + 1, weight: '' })}
+                    className="w-8 h-8 bg-[var(--color-success)] text-white rounded-full hover:opacity-80 flex items-center justify-center font-bold">+</button>
+                  <span className="text-sm text-[var(--color-text-secondary)]">
+                    {selectedProduct.unit === 'ק"ג' ? 'קר׳' : selectedProduct.unit}
+                  </span>
                 </div>
               </div>
-              <div className="p-6 border-t-2 border-gray-200 flex space-x-3 space-x-reverse">
-                <button onClick={confirmAddProduct}
-                  className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-colors font-bold flex-1">
-                  ✅ הוסף להזמנה
-                </button>
-                <button onClick={() => setShowProductModal(false)}
-                  className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors font-bold">
-                  ❌ ביטול
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">משקל</label>
+                <input type="text" value={tempProduct.weight}
+                  onChange={(e) => setTempProduct({
+                    ...tempProduct,
+                    weight: e.target.value,
+                    quantity: e.target.value && e.target.value.trim() ? 0 : tempProduct.quantity
+                  })}
+                  placeholder='כמה ק"ג?'
+                  className="w-full border border-[var(--color-border)] rounded px-3 py-2 focus:border-[var(--color-accent)] focus:outline-none text-[var(--color-text)] bg-[var(--color-surface)]" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">הערות</label>
+                <input type="text" value={tempProduct.notes}
+                  onChange={(e) => setTempProduct({ ...tempProduct, notes: e.target.value })}
+                  placeholder="הערות למוצר..."
+                  className="w-full border border-[var(--color-border)] rounded px-3 py-2 focus:border-[var(--color-accent)] focus:outline-none text-[var(--color-text)] bg-[var(--color-surface)]" />
               </div>
             </div>
+            <div className="p-5 border-t border-[var(--color-border)] flex gap-3">
+              <button type="button" onClick={confirmAddProduct}
+                className="bg-[var(--color-accent)] text-white px-6 py-2.5 rounded-lg hover:opacity-90 transition-opacity font-bold flex-1">
+                הוסף להזמנה
+              </button>
+              <button type="button" onClick={() => setShowProductModal(false)}
+                className="border border-[var(--color-border-strong)] text-[var(--color-text-secondary)] px-6 py-2.5 rounded-lg hover:bg-[var(--color-accent-light)] transition-colors font-medium">
+                ביטול
+              </button>
+            </div>
           </div>
-        )}
+        </div>
+      )}
 
-      </div>
     </div>
   );
 }
