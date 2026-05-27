@@ -107,8 +107,15 @@ Appended **after** the `items-container` div, conditional on the order containin
 </div>
 ```
 
-- Unit column uses `getQuantityUnit(item.products)` → always "יח׳" for these items.
-- Weight rows: quantity cell shows the weight value; unit cell shows the weight value (same as main print convention) — or alternatively display "משקל" as the unit. **Decision: when `weight` is set, quantity cell = weight value, unit cell = empty string** (consistent with main print which omits the unit when weight is present).
+Cell rules per row:
+
+| Condition | כמות cell | יחידה cell |
+|-----------|-----------|------------|
+| `item.weight` is set | weight value | `ק"ג` |
+| `item.weight` not set | `item.quantity` | `getQuantityUnit(item.products)` → `יח׳` |
+
+Rationale: the extra page has explicit labelled columns. Leaving the unit cell empty would force the warehouse worker to infer what the number means, which is unacceptable for a focused picking sheet.
+
 - Notes column shows `notes` from `getItemWeightAndNotes`.
 - Table has a clean border, RTL direction.
 
