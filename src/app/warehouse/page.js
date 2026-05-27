@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Package, Eye, Download, Printer } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase';
 import { getItemWeightAndNotes } from '@/lib/orderUtils';
+import { getQuantityUnit, isSausagePrintExtraPageProduct } from '@/lib/productUnits';
 
 const supabase = getSupabaseClient();
 
@@ -190,7 +191,7 @@ export default function WarehouseDashboard() {
                 ${notes ? `<div style="font-size:11px;color:#6b7280;margin-top:2px;">הערות: ${escapeHtml(notes)}</div>` : ''}
               </div>
               <div style="text-align:left;font-weight:bold;font-size:12px;color:#1f2937;min-width:60px;">
-                ${weight ? weight : `${item.quantity} ${escapeHtml(item.products?.unit || 'יח׳')}`}
+                ${weight ? weight : `${item.quantity} ${escapeHtml(getQuantityUnit(item.products))}`}
               </div>
             </div>
           `;
@@ -523,7 +524,7 @@ export default function WarehouseDashboard() {
                                   {notes && <p className="text-sm text-gray-600 font-medium">הערות: {notes}</p>}
                                 </div>
                                 <div className="text-left font-bold text-xl text-gray-800 min-w-[120px]">
-                                  {weight ? weight : `${item.quantity} ${item.products?.unit || 'יח׳'}`}
+                                  {weight ? weight : `${item.quantity} ${getQuantityUnit(item.products)}`}
                                 </div>
                               </div>
                             );
