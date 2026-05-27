@@ -199,6 +199,43 @@ export default function WarehouseDashboard() {
       </div>
     `).join('');
 
+    const sausageItems = (order.order_items || []).filter(
+      item => isSausagePrintExtraPageProduct(item.products)
+    );
+
+    const sausagePageHTML = sausageItems.length === 0 ? '' : `
+      <div style="page-break-before:always;padding:20px 10px;font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;">
+        <h2 style="text-align:center;font-size:16px;font-weight:bold;margin:0 0 15px 0;padding-bottom:8px;border-bottom:2px solid #374151;color:#1f2937;">
+          ריכוז נקניקים - עמוד נפרד למחסן
+        </h2>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#e5e7eb;">
+              <th style="border:1px solid #9ca3af;padding:8px;text-align:right;font-weight:bold;">מוצר</th>
+              <th style="border:1px solid #9ca3af;padding:8px;text-align:center;font-weight:bold;width:70px;">כמות</th>
+              <th style="border:1px solid #9ca3af;padding:8px;text-align:center;font-weight:bold;width:60px;">יחידה</th>
+              <th style="border:1px solid #9ca3af;padding:8px;text-align:right;font-weight:bold;">הערות</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sausageItems.map(item => {
+              const { weight, notes } = getItemWeightAndNotes(item);
+              const qty = weight ? escapeHtml(weight) : item.quantity;
+              const unit = weight ? 'ק"ג' : getQuantityUnit(item.products);
+              return `
+                <tr>
+                  <td style="border:1px solid #d1d5db;padding:8px;">${escapeHtml(item.products?.name || 'מוצר לא זמין')}</td>
+                  <td style="border:1px solid #d1d5db;padding:8px;text-align:center;">${qty}</td>
+                  <td style="border:1px solid #d1d5db;padding:8px;text-align:center;">${unit}</td>
+                  <td style="border:1px solid #d1d5db;padding:8px;">${escapeHtml(notes)}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+
     return `<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
@@ -243,6 +280,7 @@ export default function WarehouseDashboard() {
   <div class="items-container">
     <div class="categories-container">${categoriesHTML}</div>
   </div>
+  ${sausagePageHTML}
 </body>
 </html>`;
   };
