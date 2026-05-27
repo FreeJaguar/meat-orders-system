@@ -220,7 +220,7 @@ export default function WarehouseDashboard() {
           <tbody>
             ${sausageItems.map(item => {
               const { weight, notes } = getItemWeightAndNotes(item);
-              const qty = weight ? escapeHtml(weight) : item.quantity;
+              const qty = weight ? escapeHtml(weight) : escapeHtml(String(item.quantity));
               const unit = weight ? 'ק"ג' : getQuantityUnit(item.products);
               return `
                 <tr>
