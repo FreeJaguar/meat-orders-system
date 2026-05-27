@@ -1,4 +1,5 @@
 'use client';
+import { getQuantityUnit } from '@/lib/productUnits';
 
 export default function ProductCard({ product, onAdd, isInOrder }) {
   return (
@@ -23,7 +24,7 @@ export default function ProductCard({ product, onAdd, isInOrder }) {
           <span className="bg-[var(--color-accent-light)] text-[var(--color-accent)] px-2 py-0.5 rounded text-xs font-medium">
             {product.category}
           </span>
-          <span className="text-[var(--color-text-secondary)] text-xs">{product.unit || 'יחידה'}</span>
+          <span className="text-[var(--color-text-secondary)] text-xs">{getQuantityUnit(product)}</span>
         </div>
       </div>
       <button

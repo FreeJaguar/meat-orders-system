@@ -8,6 +8,7 @@ import SplitLayout from '@/components/layout/SplitLayout';
 import StatusBadge from '@/components/agent/StatusBadge';
 import ProductCard from '@/components/agent/ProductCard';
 import OrderItemRow from '@/components/agent/OrderItemRow';
+import { getQuantityUnit } from '@/lib/productUnits';
 
 const supabase = getSupabaseClient();
 
@@ -936,7 +937,7 @@ export default function OrderForm() {
                     onClick={() => setTempProduct({ ...tempProduct, quantity: tempProduct.quantity + 1, weight: '' })}
                     className="w-8 h-8 bg-[var(--color-success)] text-white rounded-full hover:opacity-80 flex items-center justify-center font-bold">+</button>
                   <span className="text-sm text-[var(--color-text-secondary)]">
-                    {selectedProduct.unit === 'ק"ג' ? 'קר׳' : selectedProduct.unit}
+                    {getQuantityUnit(selectedProduct)}
                   </span>
                 </div>
               </div>
