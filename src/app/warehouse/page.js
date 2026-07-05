@@ -5,6 +5,7 @@ import { Package, Eye, Download, Printer } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase';
 import { getItemWeightAndNotes } from '@/lib/orderUtils';
 import { getQuantityUnit, isSausagePrintExtraPageProduct } from '@/lib/productUnits';
+import { escapeHtml, renderPrintPageHeader } from '@/lib/printUtils';
 
 const supabase = getSupabaseClient();
 
@@ -203,8 +204,10 @@ export default function WarehouseDashboard() {
       item => isSausagePrintExtraPageProduct(item.products)
     );
 
+    // Any future extra print page must also open with renderPrintPageHeader(order).
     const sausagePageHTML = sausageItems.length === 0 ? '' : `
       <div style="page-break-before:always;padding:20px 10px;font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;">
+        ${renderPrintPageHeader(order)}
         <h2 style="text-align:center;font-size:16px;font-weight:bold;margin:0 0 15px 0;padding-bottom:8px;border-bottom:2px solid #374151;color:#1f2937;">
           ריכוז נקניקים - עמוד נפרד למחסן
         </h2>
@@ -252,9 +255,21 @@ export default function WarehouseDashboard() {
     .info-box h3 { margin:0 0 4px 0; font-size:12px; color:#1f2937; font-weight:bold; }
     .info-box p { margin:8px 0; font-size:14px; }
     .items-container { border:2px solid #e5e7eb; border-radius:8px; overflow:hidden; background:white; }
+    .print-page-header {
+      border: 3px solid #1f2937;
+      background: #f3f4f6;
+      padding: 14px 16px;
+      margin: 0 0 16px 0;
+      text-align: center;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .print-page-header-name { font-size: 30px; font-weight: 800; color: #111827; }
+    .print-page-header-meta { margin-top: 6px; font-size: 13px; font-weight: 600; color: #374151; }
   </style>
 </head>
 <body>
+  ${renderPrintPageHeader(order)}
   <div class="info-grid">
     <div class="info-box">
       <h3>פרטי לקוח</h3>
@@ -617,14 +632,4 @@ export default function WarehouseDashboard() {
       </div>
     </div>
   );
-}
-
-// Prevents XSS in print HTML — escapes user-supplied strings before
-// inserting them into the document.write() print window.
-function escapeHtml(str) {
-  return String(str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
