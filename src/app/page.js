@@ -570,6 +570,13 @@ export default function OrderForm() {
           >
             דשבורד מחסן
           </button>
+          <button
+            type="button"
+            onClick={() => router.push('/products')}
+            className="border border-[var(--color-border-strong)] text-[var(--color-text-secondary)] px-4 py-1.5 rounded text-sm font-medium hover:bg-[var(--color-accent-light)] transition-colors"
+          >
+            ניהול מוצרים
+          </button>
           {editingOrder && (
             <button
               onClick={cancelEdit}
