@@ -132,9 +132,9 @@ export default function ProductsPage() {
         aria-labelledby="product-editor-title"
         onClose={() => { setOpen(false); setEditing(null); setError(''); }}
         onCancel={event => { if (busy) event.preventDefault(); }}
-        className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-2xl max-h-[calc(100dvh-2rem)] overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white p-0 text-[var(--color-text)] shadow-2xl backdrop:bg-black/60"
+        className="fixed inset-0 m-auto w-[92vw] max-w-2xl max-h-[90dvh] overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white p-0 text-[var(--color-text)] shadow-2xl backdrop:bg-black/60"
       >
-        <form onSubmit={save} className="flex max-h-[calc(100dvh-2rem)] flex-col">
+        <form onSubmit={save} className="flex max-h-[90dvh] flex-col">
           <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] px-5 py-4">
             <div>
               <h2 id="product-editor-title" className="text-xl font-bold">{editing ? 'עריכת מוצר' : 'הוספת מוצר חדש'}</h2>
