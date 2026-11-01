@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getSupabaseClient } from '@/lib/supabase';
@@ -19,6 +19,7 @@ export default function ProductsPage() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ ...empty });
   const [open, setOpen] = useState(false);
+  const dialogRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -35,6 +36,25 @@ export default function ProductsPage() {
     });
     return () => { alive = false; subscription.unsubscribe(); };
   }, [router]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Use a native modal dialog: editing never moves the user's position in the catalog.
+  // The browser handles focus trapping and returns focus to the Edit button on close.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) {
+      dialog.showModal();
+      dialog.querySelector('[name="product-name"]')?.focus();
+    } else if (!open && dialog.open) {
+      dialog.close();
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!message) return;
+    const timeout = window.setTimeout(() => setMessage(''), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [message]);
+
   const reload = async () => {
     const {data,error:loadError} = await supabase.from('products').select('*').order('name');
     if (loadError) setError(loadError.message);
@@ -46,6 +66,12 @@ export default function ProductsPage() {
     (status === 'all' || (status === 'active' ? x.is_active === true : x.is_active === false)) &&
     [x.name,x.category,x.barcode,x.id].some(v => String(v ?? '').toLowerCase().includes(search.trim().toLowerCase()))
   );
+  const closeEditor = () => {
+    if (busy) return;
+    setOpen(false);
+    setEditing(null);
+    setError('');
+  };
   const start = (item = null) => {
     setEditing(item);
     setForm(item ? { name: item.name || '', category: item.category || '', barcode: item.barcode || '', unit: item.unit || 'קר', price: item.price ?? '', is_active: item.is_active === true } : {...empty});
@@ -72,9 +98,13 @@ export default function ProductsPage() {
       setItems(prev => editing ? prev.map(x => x.id === data.id ? data : x) : [...prev,data]);
       setOpen(false);
       setEditing(null);
-      setStatus('all');
-      setCategory('');
-      setSearch('');
+      // Preserve the list and scroll position after an edit.
+      // For a new item, remove filters so the newly added product can be found.
+      if (!editing) {
+        setStatus('all');
+        setCategory('');
+        setSearch('');
+      }
       setMessage(editing ? 'המוצר עודכן בהצלחה' : 'המוצר נוסף בהצלחה');
     } catch (e) { setError(e.message || 'שגיאה בשמירה'); }
     finally { setBusy(false); }
@@ -95,21 +125,55 @@ export default function ProductsPage() {
         <div><h1 className="text-2xl font-bold">ניהול מוצרים</h1><p className="text-sm text-[var(--color-text-secondary)]">הוספה, עריכה, הפעלה והשבתה של מוצרי המערכת</p></div>
         <div className="flex gap-2"><Link href="/" className={btn}>חזרה להזמנות</Link><button className="rounded-lg bg-[var(--color-accent)] text-white px-4 py-2" onClick={() => start()}>+ מוצר חדש</button></div>
       </header>
-      {message && <p role="status" className="rounded-lg p-3 bg-green-50 text-green-800">{message}</p>}
-      {error && <p role="alert" className="rounded-lg p-3 bg-red-50 text-red-800">{error}</p>}
-      {open && <form onSubmit={save} className="rounded-xl border border-[var(--color-border)] bg-white p-5 space-y-4">
-        <h2 className="text-xl font-bold">{editing ? 'עריכת מוצר' : 'הוספת מוצר חדש'}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <label>שם מוצר *<input className={field} required maxLength={200} value={form.name} onChange={e => setForm({...form,name:e.target.value})}/></label>
-          <label>קטגוריה *<input className={field} required maxLength={100} list="catalog-categories" value={form.category} onChange={e => setForm({...form,category:e.target.value})}/><datalist id="catalog-categories">{categories.map(c => <option key={c} value={c}/>)}</datalist></label>
-          <label>יחידת מידה *<input className={field} required maxLength={50} value={form.unit} onChange={e => setForm({...form,unit:e.target.value})}/></label>
-          <label>ברקוד<input className={field} maxLength={100} value={form.barcode} onChange={e => setForm({...form,barcode:e.target.value})}/></label>
-          <label>מחיר<input className={field} type="number" min="0" step="0.01" value={form.price} onChange={e => setForm({...form,price:e.target.value})}/></label>
-          <label className="flex items-center gap-2"><input type="checkbox" checked={form.is_active} onChange={e => setForm({...form,is_active:e.target.checked})}/> פעיל וזמין להזמנות חדשות</label>
-        </div>
-        {editing && <p className="text-sm text-[var(--color-text-secondary)]">שינוי שם או קטגוריה ישנה גם את אופן הצגת המוצר בהזמנות קיימות.</p>}
-        <div className="flex gap-2"><button disabled={busy} className="rounded-lg bg-[var(--color-accent)] text-white px-4 py-2">{busy ? 'שומר...' : 'שמור מוצר'}</button><button type="button" disabled={busy} onClick={() => setOpen(false)} className={btn}>ביטול</button></div>
-      </form>}
+      {message && <p role="status" className="fixed top-4 left-1/2 z-[60] w-[min(90vw,28rem)] -translate-x-1/2 rounded-xl border border-green-200 bg-green-50 px-5 py-3 text-center text-green-800 shadow-lg">{message}</p>}
+      {error && !open && <p role="alert" className="rounded-lg p-3 bg-red-50 text-red-800">{error}</p>}
+      <dialog
+        ref={dialogRef}
+        aria-labelledby="product-editor-title"
+        onClose={() => { setOpen(false); setEditing(null); setError(''); }}
+        onCancel={event => { if (busy) event.preventDefault(); }}
+        className="fixed inset-0 m-auto w-[92vw] max-w-2xl max-h-[90dvh] overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white p-0 text-[var(--color-text)] shadow-2xl backdrop:bg-black/60"
+      >
+        <form onSubmit={save} className="flex max-h-[90dvh] flex-col">
+          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] px-5 py-4">
+            <div>
+              <h2 id="product-editor-title" className="text-xl font-bold">{editing ? 'עריכת מוצר' : 'הוספת מוצר חדש'}</h2>
+              {editing && <p className="mt-1 text-sm text-[var(--color-text-secondary)]">מוצר #{editing.id} | {editing.name}</p>}
+            </div>
+            <button type="button" aria-label="סגירת חלון העריכה" onClick={closeEditor} disabled={busy} className="rounded-lg border border-[var(--color-border)] px-3 py-1 text-xl leading-none hover:bg-[var(--color-accent-light)] disabled:opacity-50">×</button>
+          </div>
+          <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain px-5 py-4">
+            {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label className="block text-sm font-medium">שם מוצר *
+                <input name="product-name" className={field} required maxLength={200} value={form.name} onChange={e => setForm({...form,name:e.target.value})}/>
+              </label>
+              <label className="block text-sm font-medium">קטגוריה *
+                <input className={field} required maxLength={100} list="catalog-categories" value={form.category} onChange={e => setForm({...form,category:e.target.value})}/>
+                <datalist id="catalog-categories">{categories.map(c => <option key={c} value={c}/>)}</datalist>
+              </label>
+              <label className="block text-sm font-medium">יחידת מידה *
+                <input className={field} required maxLength={50} value={form.unit} onChange={e => setForm({...form,unit:e.target.value})}/>
+              </label>
+              <label className="block text-sm font-medium">ברקוד
+                <input className={field} maxLength={100} value={form.barcode} onChange={e => setForm({...form,barcode:e.target.value})}/>
+              </label>
+              <label className="block text-sm font-medium">מחיר
+                <input className={field} type="number" min="0" step="0.01" value={form.price} onChange={e => setForm({...form,price:e.target.value})}/>
+              </label>
+              <label className="flex items-center gap-2 self-end rounded-lg bg-[var(--color-surface-alt)] p-3 text-sm font-medium">
+                <input type="checkbox" checked={form.is_active} onChange={e => setForm({...form,is_active:e.target.checked})}/>
+                פעיל וזמין להזמנות חדשות
+              </label>
+            </div>
+            {editing && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">שינוי שם או קטגוריה ישנה גם את אופן הצגת המוצר בהזמנות קיימות.</p>}
+          </div>
+          <div className="flex shrink-0 justify-end gap-2 border-t border-[var(--color-border)] bg-white px-5 py-4">
+            <button type="button" disabled={busy} onClick={closeEditor} className={btn}>ביטול</button>
+            <button type="submit" disabled={busy} className="rounded-lg bg-[var(--color-accent)] px-5 py-2 font-medium text-white hover:opacity-90 disabled:opacity-50">{busy ? 'שומר...' : 'שמור מוצר'}</button>
+          </div>
+        </form>
+      </dialog>
       <section className="rounded-xl border border-[var(--color-border)] bg-white p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
         <input aria-label="חיפוש מוצר" className={field} value={search} placeholder="חיפוש שם, ברקוד או מספר..." onChange={e => setSearch(e.target.value)}/>
         <select aria-label="קטגוריה" className={field} value={category} onChange={e => setCategory(e.target.value)}><option value="">כל הקטגוריות</option>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select>
