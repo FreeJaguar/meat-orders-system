@@ -575,13 +575,13 @@ export default function WarehouseDashboard() {
                         <div className="divide-y-2 divide-gray-100">
                           {items.map((item, index) => {
                             const { notes } = getItemWeightAndNotes(item);
-                             const amount = getOrderItemDisplay(item, item.products);
+                            const amount = getOrderItemDisplay(item, item.products);
                             return (
                               <div key={index} className="p-4 flex justify-between items-center bg-white hover:bg-gray-50">
                                 <div className="flex-1">
                                   <p className="font-bold text-gray-800 text-lg">{item.products?.name || 'מוצר לא זמין'}</p>
                                   {amount.mode === 'weight' && <p className="text-sm text-gray-600 font-medium">משקל: {amount.text}</p>}
-                                   {amount.mode === 'units' && <p className="text-sm text-gray-600 font-medium">יחידות: {amount.value}</p>}
+                                  {amount.mode === 'units' && <p className="text-sm text-gray-600 font-medium">יחידות: {amount.value}</p>}
                                   {notes && <p className="text-sm text-gray-600 font-medium">הערות: {notes}</p>}
                                 </div>
                                 <div className="text-left font-bold text-xl text-gray-800 min-w-[120px]">
