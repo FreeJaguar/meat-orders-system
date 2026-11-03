@@ -894,46 +894,48 @@ export default function OrderForm() {
       {/* ── Product quantity modal ── */}
       {showProductModal && selectedProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-[var(--color-surface)] rounded-lg max-w-md w-full border border-[var(--color-border-strong)]">
+          <div className="bg-[var(--color-surface)] rounded-lg max-w-md w-full max-h-[90dvh] overflow-y-auto border border-[var(--color-border-strong)]">
             <div className="p-5 border-b border-[var(--color-border)]">
               <h3 className="text-lg font-semibold text-[var(--color-text)]">
                 הגדרת כמות — {selectedProduct.name}
               </h3>
             </div>
             <div className="p-5 space-y-4">
+              <p className="text-xs text-[var(--color-text-secondary)]">
+                בחר אחד מהבאים: קרטונים, יחידות בודדות או משקל בק״ג. מילוי שדה אחד יאפס את האחרים.
+              </p>
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">כמות</label>
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  כמות ({getQuantityUnit(selectedProduct)})
+                </label>
                 <div className="flex items-center gap-2">
                   <button type="button"
-                    onClick={() => {
-                      const q = Math.max(0, tempProduct.quantity - 1);
-                      setTempProduct({ ...tempProduct, quantity: q, weight: q > 0 ? '' : tempProduct.weight });
-                    }}
+                    onClick={() => setTempProduct(prev => updateOrderMeasurement(prev, 'quantity', Math.max(0, Number(prev.quantity || 0) - 1)))}
                     className="w-8 h-8 bg-[var(--color-danger)] text-white rounded-full hover:opacity-80 flex items-center justify-center font-bold">-</button>
-                  <input type="number" value={tempProduct.quantity}
-                    onChange={(e) => {
-                      const q = parseInt(e.target.value) || 0;
-                      setTempProduct({ ...tempProduct, quantity: q, weight: q > 0 ? '' : tempProduct.weight });
-                    }}
-                    className="w-20 text-center border border-[var(--color-border)] rounded px-2 py-1.5 text-[var(--color-text)] bg-[var(--color-surface)] font-medium"
-                    min="0" />
+                  <input type="number" min="0" step="1" inputMode="numeric"
+                    value={tempProduct.quantity || ''}
+                    onChange={(e) => setTempProduct(prev => updateOrderMeasurement(prev, 'quantity', e.target.value))}
+                    className="w-20 text-center border border-[var(--color-border)] rounded px-2 py-1.5 text-[var(--color-text)] bg-[var(--color-surface)] font-medium" />
                   <button type="button"
-                    onClick={() => setTempProduct({ ...tempProduct, quantity: tempProduct.quantity + 1, weight: '' })}
+                    onClick={() => setTempProduct(prev => updateOrderMeasurement(prev, 'quantity', Number(prev.quantity || 0) + 1))}
                     className="w-8 h-8 bg-[var(--color-success)] text-white rounded-full hover:opacity-80 flex items-center justify-center font-bold">+</button>
-                  <span className="text-sm text-[var(--color-text-secondary)]">
-                    {getQuantityUnit(selectedProduct)}
-                  </span>
+                  <span className="text-sm text-[var(--color-text-secondary)]">{getQuantityUnit(selectedProduct)}</span>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">משקל</label>
-                <input type="text" value={tempProduct.weight}
-                  onChange={(e) => setTempProduct({
-                    ...tempProduct,
-                    weight: e.target.value,
-                    quantity: e.target.value && e.target.value.trim() ? 0 : tempProduct.quantity
-                  })}
-                  placeholder='כמה ק"ג?'
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">יחידות (יח׳)</label>
+                <input type="number" min="0" step="1" inputMode="numeric"
+                  value={tempProduct.units || ''}
+                  onChange={(e) => setTempProduct(prev => updateOrderMeasurement(prev, 'units', e.target.value))}
+                  placeholder="מספר יחידות בודדות"
+                  className="w-full border border-[var(--color-border)] rounded px-3 py-2 focus:border-[var(--color-accent)] focus:outline-none text-[var(--color-text)] bg-[var(--color-surface)]" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">משקל (ק״ג)</label>
+                <input type="text" inputMode="decimal"
+                  value={tempProduct.weight}
+                  onChange={(e) => setTempProduct(prev => updateOrderMeasurement(prev, 'weight', e.target.value))}
+                  placeholder="משקל בקילוגרמים"
                   className="w-full border border-[var(--color-border)] rounded px-3 py-2 focus:border-[var(--color-accent)] focus:outline-none text-[var(--color-text)] bg-[var(--color-surface)]" />
               </div>
               <div>
@@ -943,10 +945,14 @@ export default function OrderForm() {
                   placeholder="הערות למוצר..."
                   className="w-full border border-[var(--color-border)] rounded px-3 py-2 focus:border-[var(--color-accent)] focus:outline-none text-[var(--color-text)] bg-[var(--color-surface)]" />
               </div>
+              {!isValidOrderMeasurement(tempProduct) && (
+                <p role="alert" className="text-sm text-[var(--color-danger)]">יש להזין כמות תקינה בשדה אחד בלבד.</p>
+              )}
             </div>
             <div className="p-5 border-t border-[var(--color-border)] flex gap-3">
               <button type="button" onClick={confirmAddProduct}
-                className="bg-[var(--color-accent)] text-white px-6 py-2.5 rounded-lg hover:opacity-90 transition-opacity font-bold flex-1">
+                disabled={!isValidOrderMeasurement(tempProduct)}
+                className="bg-[var(--color-accent)] text-white px-6 py-2.5 rounded-lg hover:opacity-90 transition-opacity font-bold flex-1 disabled:opacity-40 disabled:cursor-not-allowed">
                 הוסף להזמנה
               </button>
               <button type="button" onClick={() => setShowProductModal(false)}
