@@ -395,7 +395,7 @@ export default function OrderForm() {
     setLoading(true);
     try {
       const orderNumber = 'ORD-' + Date.now();
-      const { data: orderData } = await supabase
+      const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert([{
           order_number: orderNumber,
@@ -408,8 +408,12 @@ export default function OrderForm() {
         }])
         .select()
         .single();
+      if (orderError || !orderData) throw orderError || new Error('לא ניתן ליצור הזמנה');
 
-      await supabase.from('order_items').insert(buildItemsPayload(orderData.id));
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(buildItemsPayload(orderData.id));
+      if (itemsError) throw itemsError;
 
       // Clear draft only after confirmed success
       try { localStorage.removeItem(DRAFT_KEY); } catch {}
@@ -434,7 +438,7 @@ export default function OrderForm() {
     if (!validateForm()) return;
     setLoading(true);
     try {
-      await supabase
+      const { error: updateError } = await supabase
         .from('orders')
         .update({
           customer_id: selectedCustomer,
@@ -443,9 +447,14 @@ export default function OrderForm() {
           updated_at: new Date().toISOString()
         })
         .eq('id', editingOrder.id);
+      if (updateError) throw updateError;
 
-      await supabase.from('order_items').delete().eq('order_id', editingOrder.id);
-      await supabase.from('order_items').insert(buildItemsPayload(editingOrder.id));
+      const { error: deleteError } = await supabase.from('order_items')
+        .delete().eq('order_id', editingOrder.id);
+      if (deleteError) throw deleteError;
+      const { error: insertError } = await supabase.from('order_items')
+        .insert(buildItemsPayload(editingOrder.id));
+      if (insertError) throw insertError;
 
       setMessage(`הזמנה ${editingOrder.order_number} עודכנה בהצלחה!`);
       setEditingOrder(null);
