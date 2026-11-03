@@ -317,69 +317,58 @@ export default function OrderForm() {
 
   // ─── Product modal ────────────────────────────────────────────────────────
   const addProduct = (product) => {
+    const previous = orderItems.find(item => item.product_id === product.id);
     setSelectedProduct(product);
-    setTempProduct({ quantity: 1, weight: '', notes: '' });
+    setTempProduct(previous
+      ? { quantity: previous.quantity || 0, units: previous.units || 0,
+          weight: previous.weight || '', notes: previous.notes || '' }
+      : { quantity: 1, units: 0, weight: '', notes: '' });
     setShowProductModal(true);
   };
 
   const confirmAddProduct = () => {
+    if (!isValidOrderMeasurement(tempProduct)) return;
     const existingIndex = orderItems.findIndex(item => item.product_id === selectedProduct.id);
     if (existingIndex >= 0) {
-      const updatedItems = [...orderItems];
-      updatedItems[existingIndex] = {
-        ...updatedItems[existingIndex],
-        quantity: tempProduct.quantity,
-        weight: tempProduct.weight,
-        notes: tempProduct.notes
-      };
-      setOrderItems(updatedItems);
+      setOrderItems(prev => prev.map((item, index) =>
+        index === existingIndex ? {
+          ...item,
+          quantity: tempProduct.quantity,
+          units: tempProduct.units,
+          weight: tempProduct.weight,
+          notes: tempProduct.notes
+        } : item
+      ));
     } else {
-      setOrderItems([...orderItems, {
+      setOrderItems(prev => [...prev, {
         product_id: selectedProduct.id,
         product_name: selectedProduct.name,
         category: selectedProduct.category,
+        unit: selectedProduct.unit,
         quantity: tempProduct.quantity,
+        units: tempProduct.units,
         weight: tempProduct.weight,
-        notes: tempProduct.notes,
-        unit: selectedProduct.unit
+        notes: tempProduct.notes
       }]);
     }
     setShowProductModal(false);
     setSelectedProduct(null);
   };
 
-  // ─── Inline quantity / field updates ─────────────────────────────────────
+  // ─── Inline measurement / field updates ────────────────────────────────────
   const removeItem = (index) =>
     setOrderItems(prev => prev.filter((_, i) => i !== index));
 
   const updateQuantity = (index, quantity) => {
-    setOrderItems(prev => {
-      const item = prev[index];
-      if (!item) return prev;
-      if (quantity <= 0 && !(item.weight && item.weight.trim())) {
-        return prev.filter((_, i) => i !== index);
-      }
-      return prev.map((it, i) =>
-        i === index ? { ...it, quantity: Math.max(0, quantity), weight: quantity > 0 ? '' : it.weight } : it
-      );
-    });
+    setOrderItems(prev => prev.map((item, i) =>
+      i === index ? updateOrderMeasurement(item, 'quantity', quantity) : item
+    ));
   };
 
   const updateItemField = (index, field, value) => {
-    setOrderItems(prev => {
-      const item = prev[index];
-      if (!item) return prev;
-      if (field === 'weight' && !(value && value.trim()) && item.quantity <= 0) {
-        return prev.filter((_, i) => i !== index);
-      }
-      return prev.map((it, i) => {
-        if (i !== index) return it;
-        const updated = { ...it, [field]: value };
-        if (field === 'weight' && value && value.trim()) updated.quantity = 0;
-        if (field === 'quantity' && value > 0)           updated.weight = '';
-        return updated;
-      });
-    });
+    setOrderItems(prev => prev.map((item, i) =>
+      i === index ? updateOrderMeasurement(item, field, value) : item
+    ));
   };
 
   // ─── Shared validation ────────────────────────────────────────────────────
@@ -388,27 +377,16 @@ export default function OrderForm() {
       setMessage('יש למלא את כל השדות הנדרשים');
       return false;
     }
-    const hasInvalidItems = orderItems.some(
-      item => item.quantity <= 0 && (!item.weight || !item.weight.trim())
-    );
-    if (hasInvalidItems) {
-      setMessage('כל פריט חייב לכלול כמות או משקל');
+    if (orderItems.some(item => !isValidOrderMeasurement(item))) {
+      setMessage('כל פריט חייב לכלול רק אחד מהבאים: קרטונים, יחידות או משקל תקין');
       return false;
     }
     return true;
   };
 
-  // ─── Build order_items rows for DB insert ─────────────────────────────────
-  // Stores weight in the dedicated column (new format).
-  // Notes field holds only the freeform comment — no more serialized weight string.
+  // ─── Build order_items rows for database insert ───────────────────────────
   const buildItemsPayload = (orderId) =>
-    orderItems.map(item => ({
-      order_id: orderId,
-      product_id: item.product_id,
-      quantity: item.quantity || 1,
-      weight: item.weight ? parseFloat(item.weight) : null,
-      notes: item.notes || ''
-    }));
+    orderItems.map(item => buildOrderItemPayload(item, orderId));
 
   // ─── Submit new order ─────────────────────────────────────────────────────
   const submitOrder = async (e) => {
@@ -893,7 +871,7 @@ export default function OrderForm() {
                   type="submit"
                   disabled={
                     loading || !selectedCustomer || orderItems.length === 0 ||
-                    orderItems.some(item => item.quantity <= 0 && (!item.weight || !item.weight.trim()))
+                    orderItems.some(item => !isValidOrderMeasurement(item))
                   }
                   className="w-full bg-[var(--color-accent)] text-white py-3 rounded-lg font-bold text-base hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity min-h-[48px]"
                 >
