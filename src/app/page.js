@@ -3,7 +3,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase';
-import { getItemWeightAndNotes } from '@/lib/orderUtils';
+import {
+  isValidOrderMeasurement,
+  updateOrderMeasurement,
+  buildOrderItemPayload,
+  restoreOrderMeasurement
+} from '@/lib/orderMeasurements';
 import SplitLayout from '@/components/layout/SplitLayout';
 import StatusBadge from '@/components/agent/StatusBadge';
 import ProductCard from '@/components/agent/ProductCard';
@@ -45,7 +50,7 @@ export default function OrderForm() {
   // ─── Product modal ───────────────────────────────────────────────────────
   const [showProductModal, setShowProductModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [tempProduct, setTempProduct] = useState({ quantity: 1, weight: '', notes: '' });
+  const [tempProduct, setTempProduct] = useState({ quantity: 1, units: 0, weight: '', notes: '' });
 
   // ─── Search / filter ─────────────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState('');
@@ -89,7 +94,7 @@ export default function OrderForm() {
         if (draft.notes)            setNotes(draft.notes);
         if (draft.orderItems?.length > 0) {
           const valid = draft.orderItems.filter(
-            item => item.quantity > 0 || (item.weight && item.weight.trim())
+            item => isValidOrderMeasurement(item)
           );
           if (valid.length > 0) setOrderItems(valid);
         }
@@ -266,15 +271,12 @@ export default function OrderForm() {
   // The agent can review and edit before submitting as a new order.
   const cloneOrder = (order) => {
     const items = (order.order_items || []).map(item => {
-      const { weight, notes: itemNotes } = getItemWeightAndNotes(item);
       return {
         product_id: item.product_id,
         product_name: item.products?.name || '',
         category: item.products?.category || '',
         unit: item.products?.unit || 'יחידה',
-        quantity: weight ? 0 : item.quantity,
-        weight,
-        notes: itemNotes
+        ...restoreOrderMeasurement(item)
       };
     });
     setOrderItems(items);
@@ -299,15 +301,12 @@ export default function OrderForm() {
     setNotes(order.notes || '');
 
     const items = order.order_items.map(item => {
-      const { weight, notes: itemNotes } = getItemWeightAndNotes(item);
       return {
         product_id: item.product_id,
-        product_name: item.products.name,
-        category: item.products.category,
-        quantity: weight ? 0 : item.quantity,
-        weight,
-        notes: itemNotes,
-        unit: item.products.unit
+        product_name: item.products?.name || 'מוצר לא זמין',
+        category: item.products?.category || '',
+        unit: item.products?.unit || 'יחידה',
+        ...restoreOrderMeasurement(item)
       };
     });
 
