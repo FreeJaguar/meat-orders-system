@@ -318,7 +318,7 @@ export default function WarehouseDashboard() {
   };
 
   const generateCSVContent = () => {
-    const headers = ['מספר הזמנה','לקוח','קוד לקוח','תאריך אספקה','סטטוס','מוצר','קטגוריה','כמות','משקל','הערות פריט','הערות הזמנה','תאריך יצירה'];
+    const headers = ['מספר הזמנה','לקוח','קוד לקוח','תאריך אספקה','סטטוס','מוצר','קטגוריה','כמות','משקל','הערות פריט','הערות הזמנה','תאריך יצירה','יחידות'];
     const rows = [];
     filteredOrders.forEach(order => {
       if (order.order_items?.length > 0) {
@@ -332,11 +332,12 @@ export default function WarehouseDashboard() {
             order.status,
             item.products?.name || '',
             item.products?.category || '',
-            weight ? '' : item.quantity,
+            (weight || item.units > 0) ? '' : item.quantity,
             weight,
             itemNotes,
             order.notes || '',
-            new Date(order.created_at).toLocaleDateString('he-IL')
+            new Date(order.created_at).toLocaleDateString('he-IL'),
+            item.units > 0 ? item.units : ''
           ].map(f => `"${f}"`).join(','));
         });
       } else {
@@ -348,7 +349,8 @@ export default function WarehouseDashboard() {
           order.status,
           '','','','','',
           order.notes || '',
-          new Date(order.created_at).toLocaleDateString('he-IL')
+          new Date(order.created_at).toLocaleDateString('he-IL'),
+          ''
         ].map(f => `"${f}"`).join(','));
       }
     });
