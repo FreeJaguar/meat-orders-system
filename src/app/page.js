@@ -3,12 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase';
-import {
-  isValidOrderMeasurement,
-  updateOrderMeasurement,
-  buildOrderItemPayload,
-  restoreOrderMeasurement
-} from '@/lib/orderMeasurements';
+import { getItemWeightAndNotes } from '@/lib/orderUtils';
 import SplitLayout from '@/components/layout/SplitLayout';
 import StatusBadge from '@/components/agent/StatusBadge';
 import ProductCard from '@/components/agent/ProductCard';
@@ -47,60 +42,345 @@ export default function OrderForm() {
   const [deliveryDate, setDeliveryDate] = useState('');
   const [notes, setNotes] = useState('');
 
+  // ─── Product modal ───────────────────────────────────────────────────────
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [tempProduct, setTempProduct] = useState({ quantity: 1, weight: '', notes: '' });
+
+  // ─── Search / filter ─────────────────────────────────────────────────────
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+
+  // ─── Editing existing order ──────────────────────────────────────────────
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [showOrdersList, setShowOrdersList] = useState(false);
+  const [allOrders, setAllOrders] = useState([]);
+
+  // ─── UI feedback ─────────────────────────────────────────────────────────
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  // ─── Draft save guard ─────────────────────────────────────────────────────
+  // Prevents the auto-save effect from writing an empty draft before the
+  // initial draft restore has run (which happens in the mount useEffect below).
+  const draftRestoredRef = useRef(false);
+
+  // ─── Mount: auth check + draft restore + data load ───────────────────────
+  useEffect(() => {
+    // 1. Auth
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        router.replace('/login');
+        return;
+      }
+      setUser(session.user);
+      setAuthLoading(false);
+    });
+
+    // 2. Restore draft from localStorage before setting any defaults
+    let hasDraftDate = false;
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const draft = JSON.parse(saved);
+        if (draft.selectedCustomer) setSelectedCustomer(draft.selectedCustomer);
+        if (draft.customerSearch)   setCustomerSearch(draft.customerSearch);
+        if (draft.deliveryDate)     { setDeliveryDate(draft.deliveryDate); hasDraftDate = true; }
+        if (draft.notes)            setNotes(draft.notes);
+        if (draft.orderItems?.length > 0) {
+          const valid = draft.orderItems.filter(
+            item => item.quantity > 0 || (item.weight && item.weight.trim())
+          );
+          if (valid.length > 0) setOrderItems(valid);
+        }
+      }
+    } catch {
+      // malformed localStorage — ignore
+    }
+    draftRestoredRef.current = true;
+
+    // 3. Default delivery date only when there's no saved draft date
+    if (!hasDraftDate) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      setDeliveryDate(tomorrow.toISOString().split('T')[0]);
+    }
+
+    // 4. Load reference data
+    loadCustomers();
+    loadProducts();
+    loadAllOrders();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Close customer dropdown on outside click ────────────────────────────
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.customer-dropdown')) {
+        setShowCustomerDropdown(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  // ─── Auto-save draft ─────────────────────────────────────────────────────
+  // Saves form state to localStorage on every meaningful change so that a
+  // page refresh (accidental pull-to-refresh on tablet) doesn't lose work.
+  // Does NOT save while editing an existing order (to avoid overwriting a
+  // clean draft with partial edit state).
+  useEffect(() => {
+    if (!draftRestoredRef.current) return;  // restore must run first
+    if (editingOrder) return;               // editing mode — don't touch draft
+    if (!selectedCustomer && orderItems.length === 0) return; // nothing to save
+
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        selectedCustomer, customerSearch, deliveryDate, notes, orderItems
+      }));
+    } catch {
+      // storage quota exceeded — silently skip
+    }
+  }, [selectedCustomer, customerSearch, deliveryDate, notes, orderItems, editingOrder]);
+
+  // ─── Load customer order history when customer changes ───────────────────
+  useEffect(() => {
+    if (!selectedCustomer) {
+      setCustomerOrders([]);
+      setShowCustomerHistory(false);
+      return;
+    }
+    loadCustomerOrders(selectedCustomer);
+  }, [selectedCustomer]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Data loaders ────────────────────────────────────────────────────────
+  const loadCustomers = async () => {
+    try {
+      const { data } = await supabase
+        .from('customers')
+        .select('*')
+        .order('name');
+      setCustomers(data || []);
+    } catch {
+      console.log('Error loading customers');
+    }
+  };
+
+  const loadProducts = async () => {
+    try {
+      const { data } = await supabase
+        .from('products')
+        .select('*')
+        .eq('is_active', true)
+        .order('category, name');
+      setProducts(data || []);
+    } catch {
+      console.log('Error loading products');
+    }
+  };
+
+  const loadAllOrders = async () => {
+    try {
+      const { data } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          customers (name, code),
+          order_items (
+            *,
+            products (name, category, unit)
+          )
+        `)
+        .order('created_at', { ascending: false });
+      setAllOrders(data || []);
+    } catch {
+      console.log('Error loading orders');
+    }
+  };
+
+  // Fetches the last 20 orders for the selected customer.
+  // Uses * for order_items so the query works whether or not the weight
+  // column migration has been run (explicit column lists fail with a
+  // Supabase 42703 error when a column doesn't exist yet).
+  const loadCustomerOrders = async (customerId) => {
+    setLoadingHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          id, order_number, created_at, delivery_date, status, total_items,
+          order_items (
+            *,
+            products (name, category, unit)
+          )
+        `)
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) {
+        console.error('Error loading customer orders:', error.message, error.code);
+        setCustomerOrders([]);
+        return;
+      }
+
+      setCustomerOrders(data || []);
+    } catch (err) {
+      console.error('Unexpected error loading customer orders:', err);
+      setCustomerOrders([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // ─── Customer actions ────────────────────────────────────────────────────
+  const addNewCustomer = async () => {
+    if (!newCustomer.name) {
+      setMessage('יש למלא את שם הלקוח');
+      return;
+    }
+    try {
+      const { data } = await supabase
+        .from('customers')
+        .insert([{
+          name: newCustomer.name,
+          code: newCustomer.code || null,
+          phone: newCustomer.phone,
+          address: newCustomer.address,
+          contact_person: newCustomer.contact_person
+        }])
+        .select()
+        .single();
+      setCustomers([...customers, data]);
+      setSelectedCustomer(data.id);
+      setCustomerSearch(`${data.name}${data.code ? ` (${data.code})` : ''}`);
+      setNewCustomer({ name: '', code: '', phone: '', address: '', contact_person: '' });
+      setShowAddCustomer(false);
+      setMessage(`לקוח ${data.name} נוסף בהצלחה ונבחר!`);
+    } catch {
+      setMessage('שגיאה בהוספת הלקוח');
+    }
+  };
+
+  // ─── Clone order into draft ───────────────────────────────────────────────
+  // Loads items from a past order into the form WITHOUT creating a DB record.
+  // The agent can review and edit before submitting as a new order.
+  const cloneOrder = (order) => {
+    const items = (order.order_items || []).map(item => {
+      const { weight, notes: itemNotes } = getItemWeightAndNotes(item);
+      return {
+        product_id: item.product_id,
+        product_name: item.products?.name || '',
+        category: item.products?.category || '',
+        unit: item.products?.unit || 'יחידה',
+        quantity: weight ? 0 : item.quantity,
+        weight,
+        notes: itemNotes
+      };
+    });
+    setOrderItems(items);
+    setNotes(order.notes || '');
+    // always default to tomorrow, not the original delivery date
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setDeliveryDate(tomorrow.toISOString().split('T')[0]);
+    setShowCustomerHistory(false);
+    setMessage(`פריטים הועתקו מהזמנה ${order.order_number} — עדכן ובדוק לפני שליחה`);
+  };
+
+  // ─── Edit existing order ──────────────────────────────────────────────────
+  const loadOrderForEdit = (order) => {
+    if (['בטיפול', 'נשלחה', 'הושלמה'].includes(order.status)) {
+      setMessage('לא ניתן לערוך הזמנה שכבר בטיפול במחסן');
+      return;
+    }
+    setEditingOrder(order);
+    setSelectedCustomer(order.customer_id);
+    setDeliveryDate(order.delivery_date);
+    setNotes(order.notes || '');
+
+    const items = order.order_items.map(item => {
+      const { weight, notes: itemNotes } = getItemWeightAndNotes(item);
+      return {
+        product_id: item.product_id,
+        product_name: item.products.name,
+        category: item.products.category,
+        quantity: weight ? 0 : item.quantity,
+        weight,
+        notes: itemNotes,
+        unit: item.products.unit
+      };
+    });
+
+    setOrderItems(items);
+    setShowOrdersList(false);
+    setMessage(`עורך הזמנה ${order.order_number} (סטטוס: ${order.status})`);
+  };
+
   // ─── Product modal ────────────────────────────────────────────────────────
   const addProduct = (product) => {
-    const previous = orderItems.find(item => item.product_id === product.id);
     setSelectedProduct(product);
-    setTempProduct(previous
-      ? { quantity: previous.quantity || 0, units: previous.units || 0,
-          weight: previous.weight || '', notes: previous.notes || '' }
-      : { quantity: 1, units: 0, weight: '', notes: '' });
+    setTempProduct({ quantity: 1, weight: '', notes: '' });
     setShowProductModal(true);
   };
 
   const confirmAddProduct = () => {
-    if (!isValidOrderMeasurement(tempProduct)) return;
     const existingIndex = orderItems.findIndex(item => item.product_id === selectedProduct.id);
     if (existingIndex >= 0) {
-      setOrderItems(prev => prev.map((item, index) =>
-        index === existingIndex ? {
-          ...item,
-          quantity: tempProduct.quantity,
-          units: tempProduct.units,
-          weight: tempProduct.weight,
-          notes: tempProduct.notes
-        } : item
-      ));
+      const updatedItems = [...orderItems];
+      updatedItems[existingIndex] = {
+        ...updatedItems[existingIndex],
+        quantity: tempProduct.quantity,
+        weight: tempProduct.weight,
+        notes: tempProduct.notes
+      };
+      setOrderItems(updatedItems);
     } else {
-      setOrderItems(prev => [...prev, {
+      setOrderItems([...orderItems, {
         product_id: selectedProduct.id,
         product_name: selectedProduct.name,
         category: selectedProduct.category,
-        unit: selectedProduct.unit,
         quantity: tempProduct.quantity,
-        units: tempProduct.units,
         weight: tempProduct.weight,
-        notes: tempProduct.notes
+        notes: tempProduct.notes,
+        unit: selectedProduct.unit
       }]);
     }
     setShowProductModal(false);
     setSelectedProduct(null);
   };
 
-  // ─── Inline measurement / field updates ────────────────────────────────────
+  // ─── Inline quantity / field updates ─────────────────────────────────────
   const removeItem = (index) =>
     setOrderItems(prev => prev.filter((_, i) => i !== index));
 
   const updateQuantity = (index, quantity) => {
-    setOrderItems(prev => prev.map((item, i) =>
-      i === index ? updateOrderMeasurement(item, 'quantity', quantity) : item
-    ));
+    setOrderItems(prev => {
+      const item = prev[index];
+      if (!item) return prev;
+      if (quantity <= 0 && !(item.weight && item.weight.trim())) {
+        return prev.filter((_, i) => i !== index);
+      }
+      return prev.map((it, i) =>
+        i === index ? { ...it, quantity: Math.max(0, quantity), weight: quantity > 0 ? '' : it.weight } : it
+      );
+    });
   };
 
   const updateItemField = (index, field, value) => {
-    setOrderItems(prev => prev.map((item, i) =>
-      i === index ? updateOrderMeasurement(item, field, value) : item
-    ));
+    setOrderItems(prev => {
+      const item = prev[index];
+      if (!item) return prev;
+      if (field === 'weight' && !(value && value.trim()) && item.quantity <= 0) {
+        return prev.filter((_, i) => i !== index);
+      }
+      return prev.map((it, i) => {
+        if (i !== index) return it;
+        const updated = { ...it, [field]: value };
+        if (field === 'weight' && value && value.trim()) updated.quantity = 0;
+        if (field === 'quantity' && value > 0)           updated.weight = '';
+        return updated;
+      });
+    });
   };
 
   // ─── Shared validation ────────────────────────────────────────────────────
@@ -109,16 +389,27 @@ export default function OrderForm() {
       setMessage('יש למלא את כל השדות הנדרשים');
       return false;
     }
-    if (orderItems.some(item => !isValidOrderMeasurement(item))) {
-      setMessage('כל פריט חייב לכלול רק אחד מהבאים: קרטונים, יחידות או משקל תקין');
+    const hasInvalidItems = orderItems.some(
+      item => item.quantity <= 0 && (!item.weight || !item.weight.trim())
+    );
+    if (hasInvalidItems) {
+      setMessage('כל פריט חייב לכלול כמות או משקל');
       return false;
     }
     return true;
   };
 
-  // ─── Build order_items rows for database INSERT ───────────────────────────
+  // ─── Build order_items rows for DB insert ─────────────────────────────────
+  // Stores weight in the dedicated column (new format).
+  // Notes field holds only the freeform comment — no more serialized weight string.
   const buildItemsPayload = (orderId) =>
-    orderItems.map(item => buildOrderItemPayload(item, orderId));
+    orderItems.map(item => ({
+      order_id: orderId,
+      product_id: item.product_id,
+      quantity: item.quantity || 1,
+      weight: item.weight ? parseFloat(item.weight) : null,
+      notes: item.notes || ''
+    }));
 
   // ─── Submit new order ─────────────────────────────────────────────────────
   const submitOrder = async (e) => {
@@ -603,7 +894,7 @@ export default function OrderForm() {
                   type="submit"
                   disabled={
                     loading || !selectedCustomer || orderItems.length === 0 ||
-                    orderItems.some(item => !isValidOrderMeasurement(item))
+                    orderItems.some(item => item.quantity <= 0 && (!item.weight || !item.weight.trim()))
                   }
                   className="w-full bg-[var(--color-accent)] text-white py-3 rounded-lg font-bold text-base hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity min-h-[48px]"
                 >
