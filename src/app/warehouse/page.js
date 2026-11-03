@@ -4,7 +4,8 @@ import { useRouter } from 'next/navigation';
 import { Package, Eye, Download, Printer } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase';
 import { getItemWeightAndNotes } from '@/lib/orderUtils';
-import { getQuantityUnit, isSausagePrintExtraPageProduct } from '@/lib/productUnits';
+import { isSausagePrintExtraPageProduct } from '@/lib/productUnits';
+import { getOrderItemDisplay } from '@/lib/orderMeasurements';
 import { escapeHtml, renderPrintPageHeader } from '@/lib/printUtils';
 
 const supabase = getSupabaseClient();
@@ -183,16 +184,18 @@ export default function WarehouseDashboard() {
       <div class="category-section">
         <h3 style="background:#e5e7eb;padding:6px;margin:0 0 5px 0;font-weight:bold;border-right:4px solid #3b82f6;color:#1f2937;font-size:14px;">${escapeHtml(category)}</h3>
         ${items.map(item => {
-          const { weight, notes } = getItemWeightAndNotes(item);
+          const { notes } = getItemWeightAndNotes(item);
+          const amount = getOrderItemDisplay(item, item.products);
           return `
             <div style="padding:6px;border-bottom:1px solid #d1d5db;display:flex;justify-content:space-between;align-items:center;">
               <div style="flex:1;">
                 <div style="font-weight:bold;font-size:12px;color:#1f2937;">${escapeHtml(item.products?.name || 'מוצר לא זמין')}</div>
-                ${weight ? `<div style="font-size:10px;color:#6b7280;margin-top:2px;">משקל: ${escapeHtml(weight)}</div>` : ''}
+                ${amount.mode === 'weight' ? `<div style="font-size:10px;color:#6b7280;margin-top:2px;">משקל: ${escapeHtml(amount.text)}</div>` : ''}
+                ${amount.mode === 'units' ? `<div style="font-size:10px;color:#6b7280;margin-top:2px;">יחידות: ${escapeHtml(amount.value)}</div>` : ''}
                 ${notes ? `<div style="font-size:11px;color:#6b7280;margin-top:2px;">הערות: ${escapeHtml(notes)}</div>` : ''}
               </div>
               <div style="text-align:left;font-weight:bold;font-size:12px;color:#1f2937;min-width:60px;">
-                ${weight ? escapeHtml(weight) : `${escapeHtml(String(item.quantity))} ${escapeHtml(getQuantityUnit(item.products))}`}
+                ${escapeHtml(amount.text)}
               </div>
             </div>
           `;
@@ -222,9 +225,10 @@ export default function WarehouseDashboard() {
           </thead>
           <tbody>
             ${sausageItems.map(item => {
-              const { weight, notes } = getItemWeightAndNotes(item);
-              const qty = weight ? escapeHtml(weight) : escapeHtml(String(item.quantity));
-              const unit = weight ? 'ק"ג' : getQuantityUnit(item.products);
+              const { notes } = getItemWeightAndNotes(item);
+              const amount = getOrderItemDisplay(item, item.products);
+              const qty = escapeHtml(amount.value);
+              const unit = escapeHtml(amount.unit);
               return `
                 <tr>
                   <td style="border:1px solid #d1d5db;padding:8px;">${escapeHtml(item.products?.name || 'מוצר לא זמין')}</td>
@@ -314,7 +318,7 @@ export default function WarehouseDashboard() {
   };
 
   const generateCSVContent = () => {
-    const headers = ['מספר הזמנה','לקוח','קוד לקוח','תאריך אספקה','סטטוס','מוצר','קטגוריה','כמות','משקל','הערות פריט','הערות הזמנה','תאריך יצירה'];
+    const headers = ['מספר הזמנה','לקוח','קוד לקוח','תאריך אספקה','סטטוס','מוצר','קטגוריה','כמות','משקל','הערות פריט','הערות הזמנה','תאריך יצירה','יחידות'];
     const rows = [];
     filteredOrders.forEach(order => {
       if (order.order_items?.length > 0) {
@@ -328,11 +332,12 @@ export default function WarehouseDashboard() {
             order.status,
             item.products?.name || '',
             item.products?.category || '',
-            weight ? '' : item.quantity,
+            (weight || item.units > 0) ? '' : item.quantity,
             weight,
             itemNotes,
             order.notes || '',
-            new Date(order.created_at).toLocaleDateString('he-IL')
+            new Date(order.created_at).toLocaleDateString('he-IL'),
+            item.units > 0 ? item.units : ''
           ].map(f => `"${f}"`).join(','));
         });
       } else {
@@ -344,7 +349,8 @@ export default function WarehouseDashboard() {
           order.status,
           '','','','','',
           order.notes || '',
-          new Date(order.created_at).toLocaleDateString('he-IL')
+          new Date(order.created_at).toLocaleDateString('he-IL'),
+          ''
         ].map(f => `"${f}"`).join(','));
       }
     });
@@ -568,16 +574,18 @@ export default function WarehouseDashboard() {
                         </div>
                         <div className="divide-y-2 divide-gray-100">
                           {items.map((item, index) => {
-                            const { weight, notes } = getItemWeightAndNotes(item);
+                            const { notes } = getItemWeightAndNotes(item);
+                            const amount = getOrderItemDisplay(item, item.products);
                             return (
                               <div key={index} className="p-4 flex justify-between items-center bg-white hover:bg-gray-50">
                                 <div className="flex-1">
                                   <p className="font-bold text-gray-800 text-lg">{item.products?.name || 'מוצר לא זמין'}</p>
-                                  {weight && <p className="text-sm text-gray-600 font-medium">משקל: {weight}</p>}
+                                  {amount.mode === 'weight' && <p className="text-sm text-gray-600 font-medium">משקל: {amount.text}</p>}
+                                  {amount.mode === 'units' && <p className="text-sm text-gray-600 font-medium">יחידות: {amount.value}</p>}
                                   {notes && <p className="text-sm text-gray-600 font-medium">הערות: {notes}</p>}
                                 </div>
                                 <div className="text-left font-bold text-xl text-gray-800 min-w-[120px]">
-                                  {weight ? weight : `${item.quantity} ${getQuantityUnit(item.products)}`}
+                                  {amount.text}
                                 </div>
                               </div>
                             );

@@ -3,7 +3,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase';
-import { getItemWeightAndNotes } from '@/lib/orderUtils';
+import {
+  isValidOrderMeasurement,
+  updateOrderMeasurement,
+  buildOrderItemPayload,
+  restoreOrderMeasurement
+} from '@/lib/orderMeasurements';
 import SplitLayout from '@/components/layout/SplitLayout';
 import StatusBadge from '@/components/agent/StatusBadge';
 import ProductCard from '@/components/agent/ProductCard';
@@ -45,7 +50,7 @@ export default function OrderForm() {
   // ─── Product modal ───────────────────────────────────────────────────────
   const [showProductModal, setShowProductModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [tempProduct, setTempProduct] = useState({ quantity: 1, weight: '', notes: '' });
+  const [tempProduct, setTempProduct] = useState({ quantity: 1, units: 0, weight: '', notes: '' });
 
   // ─── Search / filter ─────────────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState('');
@@ -89,7 +94,7 @@ export default function OrderForm() {
         if (draft.notes)            setNotes(draft.notes);
         if (draft.orderItems?.length > 0) {
           const valid = draft.orderItems.filter(
-            item => item.quantity > 0 || (item.weight && item.weight.trim())
+            item => isValidOrderMeasurement(item)
           );
           if (valid.length > 0) setOrderItems(valid);
         }
@@ -266,15 +271,12 @@ export default function OrderForm() {
   // The agent can review and edit before submitting as a new order.
   const cloneOrder = (order) => {
     const items = (order.order_items || []).map(item => {
-      const { weight, notes: itemNotes } = getItemWeightAndNotes(item);
       return {
         product_id: item.product_id,
         product_name: item.products?.name || '',
         category: item.products?.category || '',
         unit: item.products?.unit || 'יחידה',
-        quantity: weight ? 0 : item.quantity,
-        weight,
-        notes: itemNotes
+        ...restoreOrderMeasurement(item)
       };
     });
     setOrderItems(items);
@@ -299,15 +301,12 @@ export default function OrderForm() {
     setNotes(order.notes || '');
 
     const items = order.order_items.map(item => {
-      const { weight, notes: itemNotes } = getItemWeightAndNotes(item);
       return {
         product_id: item.product_id,
-        product_name: item.products.name,
-        category: item.products.category,
-        quantity: weight ? 0 : item.quantity,
-        weight,
-        notes: itemNotes,
-        unit: item.products.unit
+        product_name: item.products?.name || 'מוצר לא זמין',
+        category: item.products?.category || '',
+        unit: item.products?.unit || 'יחידה',
+        ...restoreOrderMeasurement(item)
       };
     });
 
@@ -318,69 +317,58 @@ export default function OrderForm() {
 
   // ─── Product modal ────────────────────────────────────────────────────────
   const addProduct = (product) => {
+    const previous = orderItems.find(item => item.product_id === product.id);
     setSelectedProduct(product);
-    setTempProduct({ quantity: 1, weight: '', notes: '' });
+    setTempProduct(previous
+      ? { quantity: previous.quantity || 0, units: previous.units || 0,
+          weight: previous.weight || '', notes: previous.notes || '' }
+      : { quantity: 1, units: 0, weight: '', notes: '' });
     setShowProductModal(true);
   };
 
   const confirmAddProduct = () => {
+    if (!isValidOrderMeasurement(tempProduct)) return;
     const existingIndex = orderItems.findIndex(item => item.product_id === selectedProduct.id);
     if (existingIndex >= 0) {
-      const updatedItems = [...orderItems];
-      updatedItems[existingIndex] = {
-        ...updatedItems[existingIndex],
-        quantity: tempProduct.quantity,
-        weight: tempProduct.weight,
-        notes: tempProduct.notes
-      };
-      setOrderItems(updatedItems);
+      setOrderItems(prev => prev.map((item, index) =>
+        index === existingIndex ? {
+          ...item,
+          quantity: tempProduct.quantity,
+          units: tempProduct.units,
+          weight: tempProduct.weight,
+          notes: tempProduct.notes
+        } : item
+      ));
     } else {
-      setOrderItems([...orderItems, {
+      setOrderItems(prev => [...prev, {
         product_id: selectedProduct.id,
         product_name: selectedProduct.name,
         category: selectedProduct.category,
+        unit: selectedProduct.unit,
         quantity: tempProduct.quantity,
+        units: tempProduct.units,
         weight: tempProduct.weight,
-        notes: tempProduct.notes,
-        unit: selectedProduct.unit
+        notes: tempProduct.notes
       }]);
     }
     setShowProductModal(false);
     setSelectedProduct(null);
   };
 
-  // ─── Inline quantity / field updates ─────────────────────────────────────
+  // ─── Inline measurement / field updates ────────────────────────────────────
   const removeItem = (index) =>
     setOrderItems(prev => prev.filter((_, i) => i !== index));
 
   const updateQuantity = (index, quantity) => {
-    setOrderItems(prev => {
-      const item = prev[index];
-      if (!item) return prev;
-      if (quantity <= 0 && !(item.weight && item.weight.trim())) {
-        return prev.filter((_, i) => i !== index);
-      }
-      return prev.map((it, i) =>
-        i === index ? { ...it, quantity: Math.max(0, quantity), weight: quantity > 0 ? '' : it.weight } : it
-      );
-    });
+    setOrderItems(prev => prev.map((item, i) =>
+      i === index ? updateOrderMeasurement(item, 'quantity', quantity) : item
+    ));
   };
 
   const updateItemField = (index, field, value) => {
-    setOrderItems(prev => {
-      const item = prev[index];
-      if (!item) return prev;
-      if (field === 'weight' && !(value && value.trim()) && item.quantity <= 0) {
-        return prev.filter((_, i) => i !== index);
-      }
-      return prev.map((it, i) => {
-        if (i !== index) return it;
-        const updated = { ...it, [field]: value };
-        if (field === 'weight' && value && value.trim()) updated.quantity = 0;
-        if (field === 'quantity' && value > 0)           updated.weight = '';
-        return updated;
-      });
-    });
+    setOrderItems(prev => prev.map((item, i) =>
+      i === index ? updateOrderMeasurement(item, field, value) : item
+    ));
   };
 
   // ─── Shared validation ────────────────────────────────────────────────────
@@ -389,27 +377,16 @@ export default function OrderForm() {
       setMessage('יש למלא את כל השדות הנדרשים');
       return false;
     }
-    const hasInvalidItems = orderItems.some(
-      item => item.quantity <= 0 && (!item.weight || !item.weight.trim())
-    );
-    if (hasInvalidItems) {
-      setMessage('כל פריט חייב לכלול כמות או משקל');
+    if (orderItems.some(item => !isValidOrderMeasurement(item))) {
+      setMessage('כל פריט חייב לכלול רק אחד מהבאים: קרטונים, יחידות או משקל תקין');
       return false;
     }
     return true;
   };
 
-  // ─── Build order_items rows for DB insert ─────────────────────────────────
-  // Stores weight in the dedicated column (new format).
-  // Notes field holds only the freeform comment — no more serialized weight string.
+  // ─── Build order_items rows for database insert ───────────────────────────
   const buildItemsPayload = (orderId) =>
-    orderItems.map(item => ({
-      order_id: orderId,
-      product_id: item.product_id,
-      quantity: item.quantity || 1,
-      weight: item.weight ? parseFloat(item.weight) : null,
-      notes: item.notes || ''
-    }));
+    orderItems.map(item => buildOrderItemPayload(item, orderId));
 
   // ─── Submit new order ─────────────────────────────────────────────────────
   const submitOrder = async (e) => {
@@ -418,7 +395,7 @@ export default function OrderForm() {
     setLoading(true);
     try {
       const orderNumber = 'ORD-' + Date.now();
-      const { data: orderData } = await supabase
+      const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert([{
           order_number: orderNumber,
@@ -431,8 +408,12 @@ export default function OrderForm() {
         }])
         .select()
         .single();
+      if (orderError || !orderData) throw orderError || new Error('לא ניתן ליצור הזמנה');
 
-      await supabase.from('order_items').insert(buildItemsPayload(orderData.id));
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(buildItemsPayload(orderData.id));
+      if (itemsError) throw itemsError;
 
       // Clear draft only after confirmed success
       try { localStorage.removeItem(DRAFT_KEY); } catch {}
@@ -457,7 +438,7 @@ export default function OrderForm() {
     if (!validateForm()) return;
     setLoading(true);
     try {
-      await supabase
+      const { error: updateError } = await supabase
         .from('orders')
         .update({
           customer_id: selectedCustomer,
@@ -466,9 +447,14 @@ export default function OrderForm() {
           updated_at: new Date().toISOString()
         })
         .eq('id', editingOrder.id);
+      if (updateError) throw updateError;
 
-      await supabase.from('order_items').delete().eq('order_id', editingOrder.id);
-      await supabase.from('order_items').insert(buildItemsPayload(editingOrder.id));
+      const { error: deleteError } = await supabase.from('order_items')
+        .delete().eq('order_id', editingOrder.id);
+      if (deleteError) throw deleteError;
+      const { error: insertError } = await supabase.from('order_items')
+        .insert(buildItemsPayload(editingOrder.id));
+      if (insertError) throw insertError;
 
       setMessage(`הזמנה ${editingOrder.order_number} עודכנה בהצלחה!`);
       setEditingOrder(null);
@@ -894,7 +880,7 @@ export default function OrderForm() {
                   type="submit"
                   disabled={
                     loading || !selectedCustomer || orderItems.length === 0 ||
-                    orderItems.some(item => item.quantity <= 0 && (!item.weight || !item.weight.trim()))
+                    orderItems.some(item => !isValidOrderMeasurement(item))
                   }
                   className="w-full bg-[var(--color-accent)] text-white py-3 rounded-lg font-bold text-base hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity min-h-[48px]"
                 >
@@ -917,46 +903,48 @@ export default function OrderForm() {
       {/* ── Product quantity modal ── */}
       {showProductModal && selectedProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-[var(--color-surface)] rounded-lg max-w-md w-full border border-[var(--color-border-strong)]">
+          <div className="bg-[var(--color-surface)] rounded-lg max-w-md w-full max-h-[90dvh] overflow-y-auto border border-[var(--color-border-strong)]">
             <div className="p-5 border-b border-[var(--color-border)]">
               <h3 className="text-lg font-semibold text-[var(--color-text)]">
                 הגדרת כמות — {selectedProduct.name}
               </h3>
             </div>
             <div className="p-5 space-y-4">
+              <p className="text-xs text-[var(--color-text-secondary)]">
+                בחר אחד מהבאים: קרטונים, יחידות בודדות או משקל בק״ג. מילוי שדה אחד יאפס את האחרים.
+              </p>
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">כמות</label>
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  כמות ({getQuantityUnit(selectedProduct)})
+                </label>
                 <div className="flex items-center gap-2">
                   <button type="button"
-                    onClick={() => {
-                      const q = Math.max(0, tempProduct.quantity - 1);
-                      setTempProduct({ ...tempProduct, quantity: q, weight: q > 0 ? '' : tempProduct.weight });
-                    }}
+                    onClick={() => setTempProduct(prev => updateOrderMeasurement(prev, 'quantity', Math.max(0, Number(prev.quantity || 0) - 1)))}
                     className="w-8 h-8 bg-[var(--color-danger)] text-white rounded-full hover:opacity-80 flex items-center justify-center font-bold">-</button>
-                  <input type="number" value={tempProduct.quantity}
-                    onChange={(e) => {
-                      const q = parseInt(e.target.value) || 0;
-                      setTempProduct({ ...tempProduct, quantity: q, weight: q > 0 ? '' : tempProduct.weight });
-                    }}
-                    className="w-20 text-center border border-[var(--color-border)] rounded px-2 py-1.5 text-[var(--color-text)] bg-[var(--color-surface)] font-medium"
-                    min="0" />
+                  <input type="number" min="0" step="1" inputMode="numeric"
+                    value={tempProduct.quantity || ''}
+                    onChange={(e) => setTempProduct(prev => updateOrderMeasurement(prev, 'quantity', e.target.value))}
+                    className="w-20 text-center border border-[var(--color-border)] rounded px-2 py-1.5 text-[var(--color-text)] bg-[var(--color-surface)] font-medium" />
                   <button type="button"
-                    onClick={() => setTempProduct({ ...tempProduct, quantity: tempProduct.quantity + 1, weight: '' })}
+                    onClick={() => setTempProduct(prev => updateOrderMeasurement(prev, 'quantity', Number(prev.quantity || 0) + 1))}
                     className="w-8 h-8 bg-[var(--color-success)] text-white rounded-full hover:opacity-80 flex items-center justify-center font-bold">+</button>
-                  <span className="text-sm text-[var(--color-text-secondary)]">
-                    {getQuantityUnit(selectedProduct)}
-                  </span>
+                  <span className="text-sm text-[var(--color-text-secondary)]">{getQuantityUnit(selectedProduct)}</span>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">משקל</label>
-                <input type="text" value={tempProduct.weight}
-                  onChange={(e) => setTempProduct({
-                    ...tempProduct,
-                    weight: e.target.value,
-                    quantity: e.target.value && e.target.value.trim() ? 0 : tempProduct.quantity
-                  })}
-                  placeholder='כמה ק"ג?'
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">יחידות (יח׳)</label>
+                <input type="number" min="0" step="1" inputMode="numeric"
+                  value={tempProduct.units || ''}
+                  onChange={(e) => setTempProduct(prev => updateOrderMeasurement(prev, 'units', e.target.value))}
+                  placeholder="מספר יחידות בודדות"
+                  className="w-full border border-[var(--color-border)] rounded px-3 py-2 focus:border-[var(--color-accent)] focus:outline-none text-[var(--color-text)] bg-[var(--color-surface)]" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">משקל (ק״ג)</label>
+                <input type="text" inputMode="decimal"
+                  value={tempProduct.weight}
+                  onChange={(e) => setTempProduct(prev => updateOrderMeasurement(prev, 'weight', e.target.value))}
+                  placeholder="משקל בקילוגרמים"
                   className="w-full border border-[var(--color-border)] rounded px-3 py-2 focus:border-[var(--color-accent)] focus:outline-none text-[var(--color-text)] bg-[var(--color-surface)]" />
               </div>
               <div>
@@ -966,10 +954,14 @@ export default function OrderForm() {
                   placeholder="הערות למוצר..."
                   className="w-full border border-[var(--color-border)] rounded px-3 py-2 focus:border-[var(--color-accent)] focus:outline-none text-[var(--color-text)] bg-[var(--color-surface)]" />
               </div>
+              {!isValidOrderMeasurement(tempProduct) && (
+                <p role="alert" className="text-sm text-[var(--color-danger)]">יש להזין כמות תקינה בשדה אחד בלבד.</p>
+              )}
             </div>
             <div className="p-5 border-t border-[var(--color-border)] flex gap-3">
               <button type="button" onClick={confirmAddProduct}
-                className="bg-[var(--color-accent)] text-white px-6 py-2.5 rounded-lg hover:opacity-90 transition-opacity font-bold flex-1">
+                disabled={!isValidOrderMeasurement(tempProduct)}
+                className="bg-[var(--color-accent)] text-white px-6 py-2.5 rounded-lg hover:opacity-90 transition-opacity font-bold flex-1 disabled:opacity-40 disabled:cursor-not-allowed">
                 הוסף להזמנה
               </button>
               <button type="button" onClick={() => setShowProductModal(false)}
