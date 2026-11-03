@@ -18,25 +18,25 @@ export default function OrderItemRow({ item, index, onRemove, onQuantityChange, 
           <Trash2 size={15} />
         </button>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">כמות ({countUnit})</label>
           <div className="flex items-center gap-1">
             <button type="button"
               onClick={() => onQuantityChange(index, Math.max(0, Number(item.quantity || 0) - 1))}
-              aria-label="הפחת קרטונים"
+              aria-label={`הפחת כמות ${countUnit}`}
               className="w-6 h-6 bg-[var(--color-danger)] text-white rounded-full hover:opacity-80 flex items-center justify-center flex-shrink-0">
               <Minus size={10} />
             </button>
             <input type="number" min="0" step="1" inputMode="numeric"
-              aria-label={`כמות קרטונים עבור ${item.product_name}`}
+              aria-label={`כמות ${countUnit} עבור ${item.product_name}`}
               value={item.quantity || ''}
               onChange={(e) => onQuantityChange(index, e.target.value)}
               className="w-full min-w-0 text-center border border-[var(--color-border)] rounded px-1 py-0.5 text-sm text-[var(--color-text)] bg-[var(--color-surface)] font-medium"
             />
             <button type="button"
               onClick={() => onQuantityChange(index, Number(item.quantity || 0) + 1)}
-              aria-label="הוסף קרטון"
+              aria-label={`הוסף כמות ${countUnit}`}
               className="w-6 h-6 bg-[var(--color-success)] text-white rounded-full hover:opacity-80 flex items-center justify-center flex-shrink-0">
               <Plus size={10} />
             </button>
