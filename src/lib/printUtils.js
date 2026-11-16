@@ -20,18 +20,20 @@ function formatDeliveryDate(deliveryDate) {
 // Prominent banner repeated at the top of every printed warehouse page/section
 // so pages can't be mixed up between different customers' orders.
 export function renderPrintPageHeader(order) {
-  const customerName = order?.customers?.name || 'לא צוין';
+  const customerCode = order?.customers?.code ?? 'לא צוין';
+  const customerName = order?.customers?.name || '';
   const deliveryDate = formatDeliveryDate(order?.delivery_date);
-  const orderNumber = order?.order_number || '';
+  const itemCount = order?.order_items?.length ?? 0;
 
   const metaParts = [];
   if (deliveryDate) metaParts.push(`תאריך אספקה: ${escapeHtml(deliveryDate)}`);
-  if (orderNumber) metaParts.push(`מספר הזמנה: ${escapeHtml(orderNumber)}`);
+  metaParts.push(`כמות פריטים בהזמנה: ${itemCount}`);
 
   return `
     <div class="print-page-header">
-      <div class="print-page-header-name">לקוח: ${escapeHtml(customerName)}</div>
-      ${metaParts.length ? `<div class="print-page-header-meta">${metaParts.join(' | ')}</div>` : ''}
+      <div class="print-page-header-name">קוד לקוח: ${escapeHtml(customerCode)}</div>
+      ${customerName ? `<div class="print-page-header-customer-name">${escapeHtml(customerName)}</div>` : ''}
+      <div class="print-page-header-meta">${metaParts.join(' | ')}</div>
     </div>
   `;
 }
