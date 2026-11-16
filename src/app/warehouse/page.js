@@ -254,10 +254,6 @@ export default function WarehouseDashboard() {
     .category-section { break-inside:avoid; margin-bottom:15px; page-break-inside:avoid; }
     body { font-family:'Segoe UI',Tahoma,Arial,sans-serif; margin:0; padding:10px; line-height:1.2; font-size:11px; color:#1f2937; background:white; }
     p { margin:1px 0; }
-    .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px; }
-    .info-box { border:1px solid #e5e7eb; padding:4px; border-radius:2px; background:#f9fafb; font-size:12px; }
-    .info-box h3 { margin:0 0 4px 0; font-size:12px; color:#1f2937; font-weight:bold; }
-    .info-box p { margin:8px 0; font-size:14px; }
     .items-container { border:2px solid #e5e7eb; border-radius:8px; overflow:hidden; background:white; }
     .print-page-header {
       border: 3px solid #1f2937;
@@ -269,29 +265,14 @@ export default function WarehouseDashboard() {
       page-break-inside: avoid;
     }
     .print-page-header-name { font-size: 30px; font-weight: 800; color: #111827; }
+    .print-page-header-customer-name { margin-top: 4px; font-size: 17px; font-weight: 700; color: #374151; }
     .print-page-header-meta { margin-top: 6px; font-size: 13px; font-weight: 600; color: #374151; }
   </style>
 </head>
 <body>
   ${renderPrintPageHeader(order)}
-  <div class="info-grid">
-    <div class="info-box">
-      <h3>פרטי לקוח</h3>
-      <p><strong>שם:</strong> ${escapeHtml(order.customers?.name || 'לא צוין')}</p>
-      <p><strong>קוד:</strong> ${escapeHtml(order.customers?.code || 'אין')}</p>
-      <p><strong>טלפון:</strong> ${escapeHtml(order.customers?.phone || 'לא צוין')}</p>
-      <p><strong>כתובת:</strong> ${escapeHtml(order.customers?.address || 'לא צוינה')}</p>
-    </div>
-    <div class="info-box">
-      <h3>פרטי הזמנה</h3>
-      <p><strong>מספר:</strong> ${escapeHtml(order.order_number)}</p>
-      <p><strong>תאריך אספקה:</strong> ${new Date(order.delivery_date).toLocaleDateString('he-IL', { year:'numeric', month:'long', day:'numeric' })}</p>
-      <p><strong>סטטוס:</strong> ${escapeHtml(order.status)}</p>
-      <p><strong>סה"כ פריטים:</strong> ${order.order_items?.length || 0} מוצרים</p>
-    </div>
-  </div>
   ${order.notes ? `
-    <div class="info-box" style="margin-bottom:15px;">
+    <div style="border:1px solid #e5e7eb;padding:8px;margin-bottom:15px;">
       <h3>הערות כלליות</h3>
       <p style="background:white;padding:6px;border-radius:4px;border:1px solid #e5e7eb;">${escapeHtml(order.notes)}</p>
     </div>
